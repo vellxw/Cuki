@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "snapshot_date": "2026-09-14",
+  "status": "partial_source_recovery_not_runnable",
+  "repository": "vellxw/Cuki",
+  "original_files": [
+    {
+      "path": "apps/mobile/src/screens/Garden.tsx",
+      "bytes": 22422,
+      "sha256": "da2322c382bfb34d83f69790794ccdd2bba48fddcea8d11daa18f85dc4dce252",
+      "git_blob_sha": "a6bc25b61ba4b021f3f0d205ce968e895b2be56c"
+    },
+    {
+      "path": "apps/mobile/src/screens/Home.tsx",
+      "bytes": 6967,
+      "sha256": "2c339d216adfcd5e5e54f59eb266bb7711df2caa92b87c72d98f1e58b6269038",
+      "git_blob_sha": "c04ca3dc2a497ad2644fd5ef27d1b7eb123182a6"
+    },
+    {
+      "path": "apps/mobile/src/screens/Recipes.tsx",
+      "bytes": 29601,
+      "sha256": "fdb81ff6ea8e58134ff2e0dcda0e3583650ce5cfc631dffcf3e8a4290df96562",
+      "git_blob_sha": "40ab7aaee4df0798e286b08258ff00b7543f293b"
+    },
+    {
+      "path": "apps/mobile/src/screens/Training.tsx",
+      "bytes": 39278,
+      "sha256": "8a83001b0716ee0e17179b6431e79776126b97dc0aa7b2bbd45f82c172ef1800",
+      "git_blob_sha": "8906055cbd2e3b311512440f64b9548b1093cef5"
+    },
+    {
+      "path": "apps/mobile/src/screens/registry.tsx",
+      "bytes": 1508,
+      "sha256": "86674e9b6b6dafa2556de653d269e00704b09561c94ea1a1db741286bcc9b06a",
+      "git_blob_sha": "534aff1c2c6d82181ec3017c32a7fa75b9605d44"
+    },
+    {
+      "path": "artifacts/verify-final.log",
+      "bytes": 12899,
+      "sha256": "f343393e606201f93b0f035765d7c5b82627f340223139eff5dfee9cd8969825",
+      "git_blob_sha": "8e945f2e610eb34e9ebd03e7eab13ad6aa78bbbf"
+    }
+  ],
+  "recovered_source_file_count": 5,
+  "historical_log_file_count": 1,
+  "source_maps_declared_screen_ids": {
+    "apps/mobile/src/screens/Garden.tsx": [
+      "SC-79",
+      "SC-80",
+      "SC-81",
+      "SC-82",
+      "SC-83",
+      "SC-84",
+      "SC-85",
+      "SC-86",
+      "SC-87",
+      "SC-88",
+      "SC-89",
+      "SC-90",
+      "SC-91"
+    ],
+    "apps/mobile/src/screens/Home.tsx": [
+      "SC-07",
+      "SC-08"
+    ],
+    "apps/mobile/src/screens/Recipes.tsx": [
+      "SC-23",
+      "SC-24",
+      "SC-25",
+      "SC-26",
+      "SC-27",
+      "SC-28",
+      "SC-29",
+      "SC-30",
+      "SC-31",
+      "SC-32",
+      "SC-33",
+      "SC-34",
+      "SC-35"
+    ],
+    "apps/mobile/src/screens/Training.tsx": [
+      "SC-42",
+      "SC-43",
+      "SC-44",
+      "SC-45",
+      "SC-46",
+      "SC-47",
+      "SC-48",
+      "SC-49",
+      "SC-50",
+      "SC-51",
+      "SC-52",
+      "SC-53",
+      "SC-54",
+      "SC-55",
+      "SC-56"
+    ]
+  },
+  "declared_screen_ids_count": 43,
+  "missing_relative_import_targets": [
+    "apps/mobile/src/data/AppProvider",
+    "apps/mobile/src/data/community",
+    "apps/mobile/src/native/io",
+    "apps/mobile/src/native/notifications",
+    "apps/mobile/src/screens/Billing",
+    "apps/mobile/src/screens/Foods",
+    "apps/mobile/src/screens/Onboarding",
+    "apps/mobile/src/screens/Planning",
+    "apps/mobile/src/screens/Progress",
+    "apps/mobile/src/screens/Settings",
+    "apps/mobile/src/screens/drafts",
+    "apps/mobile/src/ui/Icon",
+    "apps/mobile/src/ui/Plant",
+    "apps/mobile/src/ui/components",
+    "apps/mobile/src/ui/theme",
+    "packages/core/api",
+    "packages/core/state",
+    "packages/core/training",
+    "packages/core/types",
+    "packages/core/utils"
+  ],
+  "external_import_names_only_not_version_pins": [
+    "@tanstack/react-query",
+    "expo-image",
+    "expo-keep-awake",
+    "expo-linear-gradient",
+    "react",
+    "react-native"
+  ],
+  "missing_project_materials": [
+    "Root and mobile package.json and lockfile",
+    "App entry point and native/Expo/TypeScript/Metro configuration",
+    "UI components, theme, navigation provider and plant renderer",
+    "Application provider, state, types, persistence, sync and API implementation",
+    "Other screen modules imported by registry.tsx",
+    "Native adapters, data fixtures and runtime assets",
+    "Test source and test configuration",
+    "Backend, database migrations, worker and administrative app"
+  ],
+  "verification": {
+    "performed": "Byte identity of recovered originals (SHA-256 and Git blob SHA); static import inventory",
+    "application_tests_rerun": false,
+    "typecheck_rerun": false,
+    "native_build_performed": false,
+    "historical_test_log_is_not_current_build_evidence": true
+  }
+}

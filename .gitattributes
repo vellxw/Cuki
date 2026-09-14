@@ -1,0 +1,6 @@
+*.tsx text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.log text eol=lf
+MANIFEST.sha256 text eol=lf

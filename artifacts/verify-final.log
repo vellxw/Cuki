@@ -1,0 +1,441 @@
+
+> cuki@2.1.0 verify
+> npm run typecheck && npm run test:core && npm test
+
+
+> cuki@2.1.0 typecheck
+> tsc --noEmit
+
+
+> cuki@2.1.0 test:core
+> node --import tsx --test tests/core.test.ts tests/gateway.test.ts
+
+TAP version 13
+# Subtest: inicio sin actividad, votos, coins o Plus ficticios
+ok 1 - inicio sin actividad, votos, coins o Plus ficticios
+  ---
+  duration_ms: 19.763639
+  type: 'test'
+  ...
+# Subtest: null permanece desconocido al escalar y sumar
+ok 2 - null permanece desconocido al escalar y sumar
+  ---
+  duration_ms: 0.463192
+  type: 'test'
+  ...
+# Subtest: recetas escalan sin redondeo intermedio 0.01
+ok 3 - recetas escalan sin redondeo intermedio 0.01
+  ---
+  duration_ms: 0.876033
+  type: 'test'
+  ...
+# Subtest: recetas escalan sin redondeo intermedio 0.25
+ok 4 - recetas escalan sin redondeo intermedio 0.25
+  ---
+  duration_ms: 0.553877
+  type: 'test'
+  ...
+# Subtest: recetas escalan sin redondeo intermedio 0.5
+ok 5 - recetas escalan sin redondeo intermedio 0.5
+  ---
+  duration_ms: 0.482045
+  type: 'test'
+  ...
+# Subtest: recetas escalan sin redondeo intermedio 1
+ok 6 - recetas escalan sin redondeo intermedio 1
+  ---
+  duration_ms: 0.636178
+  type: 'test'
+  ...
+# Subtest: recetas escalan sin redondeo intermedio 2
+ok 7 - recetas escalan sin redondeo intermedio 2
+  ---
+  duration_ms: 0.517793
+  type: 'test'
+  ...
+# Subtest: recetas escalan sin redondeo intermedio 3.75
+ok 8 - recetas escalan sin redondeo intermedio 3.75
+  ---
+  duration_ms: 0.392692
+  type: 'test'
+  ...
+# Subtest: recetas escalan sin redondeo intermedio 100
+ok 9 - recetas escalan sin redondeo intermedio 100
+  ---
+  duration_ms: 0.573704
+  type: 'test'
+  ...
+# Subtest: entrada inválida no se transforma silenciosamente ""
+ok 10 - entrada inválida no se transforma silenciosamente ""
+  ---
+  duration_ms: 0.519203
+  type: 'test'
+  ...
+# Subtest: entrada inválida no se transforma silenciosamente "-3"
+ok 11 - entrada inválida no se transforma silenciosamente "-3"
+  ---
+  duration_ms: 0.178138
+  type: 'test'
+  ...
+# Subtest: entrada inválida no se transforma silenciosamente "1,2.3"
+ok 12 - entrada inválida no se transforma silenciosamente "1,2.3"
+  ---
+  duration_ms: 0.122132
+  type: 'test'
+  ...
+# Subtest: entrada inválida no se transforma silenciosamente "abc"
+ok 13 - entrada inválida no se transforma silenciosamente "abc"
+  ---
+  duration_ms: 0.054042
+  type: 'test'
+  ...
+# Subtest: entrada inválida no se transforma silenciosamente "Infinity"
+ok 14 - entrada inválida no se transforma silenciosamente "Infinity"
+  ---
+  duration_ms: 0.049109
+  type: 'test'
+  ...
+# Subtest: entrada inválida no se transforma silenciosamente "NaN"
+ok 15 - entrada inválida no se transforma silenciosamente "NaN"
+  ---
+  duration_ms: 0.045829
+  type: 'test'
+  ...
+# Subtest: entrada inválida no se transforma silenciosamente "2e4"
+ok 16 - entrada inválida no se transforma silenciosamente "2e4"
+  ---
+  duration_ms: 0.046418
+  type: 'test'
+  ...
+# Subtest: entrada inválida no se transforma silenciosamente "1 000"
+ok 17 - entrada inválida no se transforma silenciosamente "1 000"
+  ---
+  duration_ms: 0.04339
+  type: 'test'
+  ...
+# Subtest: coma decimal y opcionales sin convertir vacío a cero
+ok 18 - coma decimal y opcionales sin convertir vacío a cero
+  ---
+  duration_ms: 0.199639
+  type: 'test'
+  ...
+# Subtest: nutrición histórica no cambia cuando cambia una receta
+ok 19 - nutrición histórica no cambia cuando cambia una receta
+  ---
+  duration_ms: 3.113621
+  type: 'test'
+  ...
+# Subtest: alimento editado necesita ID de versión nuevo
+ok 20 - alimento editado necesita ID de versión nuevo
+  ---
+  duration_ms: 0.867908
+  type: 'test'
+  ...
+# Subtest: edición del diario escala su propio snapshot
+ok 21 - edición del diario escala su propio snapshot
+  ---
+  duration_ms: 1.653593
+  type: 'test'
+  ...
+# Subtest: eliminar/deshacer conserva el historial y corrige suma diaria
+ok 22 - eliminar/deshacer conserva el historial y corrige suma diaria
+  ---
+  duration_ms: 2.024123
+  type: 'test'
+  ...
+# Subtest: metas con vigencia histórica por fecha
+ok 23 - metas con vigencia histórica por fecha
+  ---
+  duration_ms: 4.939193
+  type: 'test'
+  ...
+# Subtest: checksum GTIN 7790001000105
+ok 24 - checksum GTIN 7790001000105
+  ---
+  duration_ms: 0.311215
+  type: 'test'
+  ...
+# Subtest: checksum GTIN 4006381333931
+ok 25 - checksum GTIN 4006381333931
+  ---
+  duration_ms: 0.122163
+  type: 'test'
+  ...
+# Subtest: checksum GTIN 96385074
+ok 26 - checksum GTIN 96385074
+  ---
+  duration_ms: 0.114242
+  type: 'test'
+  ...
+# Subtest: checksum GTIN 036000291452
+ok 27 - checksum GTIN 036000291452
+  ---
+  duration_ms: 0.051887
+  type: 'test'
+  ...
+# Subtest: QR genérico no se abre ni se convierte a alimento
+ok 28 - QR genérico no se abre ni se convierte a alimento
+  ---
+  duration_ms: 0.207727
+  type: 'test'
+  ...
+# Subtest: fechas imposibles y zona UTC/Argentina
+ok 29 - fechas imposibles y zona UTC/Argentina
+  ---
+  duration_ms: 1.787101
+  type: 'test'
+  ...
+# Subtest: el timer usa deadline incluso después de reabrir o volver del fondo
+ok 30 - el timer usa deadline incluso después de reabrir o volver del fondo
+  ---
+  duration_ms: 0.147246
+  type: 'test'
+  ...
+# Subtest: no hay éxito visual ni pérdida de outbox si SQLite falla
+ok 31 - no hay éxito visual ni pérdida de outbox si SQLite falla
+  ---
+  duration_ms: 1.684241
+  type: 'test'
+  ...
+# Subtest: dos comandos concurrentes conservan los dos registros
+ok 32 - dos comandos concurrentes conservan los dos registros
+  ---
+  duration_ms: 2.986466
+  type: 'test'
+  ...
+# Subtest: retry del mismo comando no duplica registro ni outbox
+ok 33 - retry del mismo comando no duplica registro ni outbox
+  ---
+  duration_ms: 0.975534
+  type: 'test'
+  ...
+# Subtest: lote atómico no guarda medio recorrido si una acción falla
+ok 34 - lote atómico no guarda medio recorrido si una acción falla
+  ---
+  duration_ms: 1.263464
+  type: 'test'
+  ...
+# Subtest: cuentas y borradores no se mezclan al cambiar usuario
+ok 35 - cuentas y borradores no se mezclan al cambiar usuario
+  ---
+  duration_ms: 3.323564
+  type: 'test'
+  ...
+# Subtest: migración invitada es idempotente y no importa autoridad del jardín
+ok 36 - migración invitada es idempotente y no importa autoridad del jardín
+  ---
+  duration_ms: 2.488919
+  type: 'test'
+  ...
+# Subtest: serie y descanso quedan confirmados al reabrir
+ok 37 - serie y descanso quedan confirmados al reabrir
+  ---
+  duration_ms: 3.013865
+  type: 'test'
+  ...
+# Subtest: versión vieja de una serie nunca pisa edición nueva
+ok 38 - versión vieja de una serie nunca pisa edición nueva
+  ---
+  duration_ms: 1.401913
+  type: 'test'
+  ...
+# Subtest: superseries alternan ejercicios con series pendientes
+ok 39 - superseries alternan ejercicios con series pendientes
+  ---
+  duration_ms: 10.470858
+  type: 'test'
+  ...
+# Subtest: calentamiento solo no habilita jardín y una sesión descartada tampoco
+ok 40 - calentamiento solo no habilita jardín y una sesión descartada tampoco
+  ---
+  duration_ms: 1.476002
+  type: 'test'
+  ...
+# Subtest: progresión se abstiene sin datos y usa incremento de equipo al completar rango
+ok 41 - progresión se abstiene sin datos y usa incremento de equipo al completar rango
+  ---
+  duration_ms: 1.579065
+  type: 'test'
+  ...
+# Subtest: kg/lb conversión reversible, no mezcla cargas por convención
+ok 42 - kg/lb conversión reversible, no mezcla cargas por convención
+  ---
+  duration_ms: 0.097409
+  type: 'test'
+  ...
+# Subtest: lista de compras descuenta solo despensa vigente
+ok 43 - lista de compras descuenta solo despensa vigente
+  ---
+  duration_ms: 2.056633
+  type: 'test'
+  ...
+# Subtest: semilla estable entre 18/38/52: crecimiento individual y nuevas hojas
+ok 44 - semilla estable entre 18/38/52: crecimiento individual y nuevas hojas
+  ---
+  duration_ms: 1.11553
+  type: 'test'
+  ...
+# Subtest: cosecha prematura y ciclo de otra cuenta se rechazan al leer contrato
+ok 45 - cosecha prematura y ciclo de otra cuenta se rechazan al leer contrato
+  ---
+  duration_ms: 2.414697
+  type: 'test'
+  ...
+# Subtest: ledger con índice repetido o fronteras ambiguas no se acepta
+ok 46 - ledger con índice repetido o fronteras ambiguas no se acepta
+  ---
+  duration_ms: 0.855792
+  type: 'test'
+  ...
+# Subtest: contratos coin/plant emplean campos canónicos no aliases inventados
+ok 47 - contratos coin/plant emplean campos canónicos no aliases inventados
+  ---
+  duration_ms: 3.565897
+  type: 'test'
+  ...
+# Subtest: canje confirmado requiere inicio y fin reales de beneficio
+ok 48 - canje confirmado requiere inicio y fin reales de beneficio
+  ---
+  duration_ms: 1.04926
+  type: 'test'
+  ...
+# Subtest: proyección rechaza autoridad de moneda y un owner ajeno
+ok 49 - proyección rechaza autoridad de moneda y un owner ajeno
+  ---
+  duration_ms: 2.298907
+  type: 'test'
+  ...
+# Subtest: pull conserva modificaciones locales pendientes como conflicto explícito
+ok 50 - pull conserva modificaciones locales pendientes como conflicto explícito
+  ---
+  duration_ms: 4.082858
+  type: 'test'
+  ...
+# Subtest: serializer de receta expresa cantidades/estado y pasos desde 1
+ok 51 - serializer de receta expresa cantidades/estado y pasos desde 1
+  ---
+  duration_ms: 0.646089
+  type: 'test'
+  ...
+# Subtest: UPC-E con metadatos se expande y verifica sin confundir EAN-8
+ok 52 - UPC-E con metadatos se expande y verifica sin confundir EAN-8
+  ---
+  duration_ms: 43.585766
+  type: 'test'
+  ...
+# Subtest: servidor HTTPS obligatorio salvo desarrollo explícito
+ok 53 - servidor HTTPS obligatorio salvo desarrollo explícito
+  ---
+  duration_ms: 1.247468
+  type: 'test'
+  ...
+# Subtest: rutas externas y doble slash rechazados antes de transporte
+ok 54 - rutas externas y doble slash rechazados antes de transporte
+  ---
+  duration_ms: 1.218913
+  type: 'test'
+  ...
+# Subtest: solicitud pública no envía token; privada sí y clave estable
+ok 55 - solicitud pública no envía token; privada sí y clave estable
+  ---
+  duration_ms: 29.558337
+  type: 'test'
+  ...
+# Subtest: 401 sin autenticación no llama proveedor
+ok 56 - 401 sin autenticación no llama proveedor
+  ---
+  duration_ms: 0.53821
+  type: 'test'
+  ...
+# Subtest: JSON malformado en éxito no confirma una escritura
+ok 57 - JSON malformado en éxito no confirma una escritura
+  ---
+  duration_ms: 0.849447
+  type: 'test'
+  ...
+# Subtest: 204 es éxito sin cuerpo, no se intenta interpretar JSON vacío
+ok 58 - 204 es éxito sin cuerpo, no se intenta interpretar JSON vacío
+  ---
+  duration_ms: 0.901393
+  type: 'test'
+  ...
+# Subtest: cambio de cuenta durante respuesta descarta resultado privado
+ok 59 - cambio de cuenta durante respuesta descarta resultado privado
+  ---
+  duration_ms: 0.617314
+  type: 'test'
+  ...
+# Subtest: cancelar propaga AbortSignal y no acusa datos como confirmados
+ok 60 - cancelar propaga AbortSignal y no acusa datos como confirmados
+  ---
+  duration_ms: 0.453459
+  type: 'test'
+  ...
+# Subtest: sincronización confirma outbox y solo después persiste cursor validado
+ok 61 - sincronización confirma outbox y solo después persiste cursor validado
+  ---
+  duration_ms: 39.361144
+  type: 'test'
+  ...
+# Subtest: reintento tras fallo conserva mismo id de operación
+ok 62 - reintento tras fallo conserva mismo id de operación
+  ---
+  duration_ms: 10.334217
+  type: 'test'
+  ...
+# Subtest: malformado no elimina operación aunque HTTP sea 200
+ok 63 - malformado no elimina operación aunque HTTP sea 200
+  ---
+  duration_ms: 8.278991
+  type: 'test'
+  ...
+# Subtest: 409 bloquea siguientes cambios del mismo registro, no los descarta
+ok 64 - 409 bloquea siguientes cambios del mismo registro, no los descarta
+  ---
+  duration_ms: 20.275742
+  type: 'test'
+  ...
+# Subtest: proyección de otro dueño no actualiza cursor ni información
+ok 65 - proyección de otro dueño no actualiza cursor ni información
+  ---
+  duration_ms: 7.699287
+  type: 'test'
+  ...
+# Subtest: cursor repetido se detecta, no queda paginación infinita
+ok 66 - cursor repetido se detecta, no queda paginación infinita
+  ---
+  duration_ms: 10.153755
+  type: 'test'
+  ...
+# Subtest: cotización de conflicto no puede absorber otra entidad de la outbox
+ok 67 - cotización de conflicto no puede absorber otra entidad de la outbox
+  ---
+  duration_ms: 6.637943
+  type: 'test'
+  ...
+1..67
+# tests 67
+# suites 0
+# pass 67
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 579.604256
+
+> cuki@2.1.0 test
+> jest --runInBand
+
+PASS tests/cloud.test.tsx
+PASS tests/journeys.test.tsx (5.418 s)
+PASS tests/screens.test.tsx
+(node:4069) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS tests/storage.test.tsx
+PASS tests/auth.test.tsx
+
+Test Suites: 5 passed, 5 total
+Tests:       212 passed, 212 total
+Snapshots:   0 total
+Time:        10.199 s, estimated 15 s
+Ran all test suites.
