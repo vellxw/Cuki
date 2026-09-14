@@ -1,0 +1,59 @@
+name: CUKI public food sources
+on:
+  push:
+    paths: ['.github/workflows/catalog-sources.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch bounded public-domain source snapshot
+        shell: bash
+        run: |
+          mkdir -p /tmp/cuki-food-sources
+          python - <<'PY'
+          import json, urllib.request, urllib.error, time, pathlib, hashlib
+          queries = {
+            'chicken_cooked':'Chicken broilers fryers breast meat only cooked roasted',
+            'brown_rice_cooked':'Rice brown long grain cooked',
+            'avocado':'Avocados raw all commercial varieties',
+            'tomato':'Tomatoes red ripe raw year round average',
+            'broccoli_cooked':'Broccoli cooked boiled drained without salt',
+            'carrot_raw':'Carrots raw',
+            'soybeans_cooked':'Soybeans green cooked boiled drained without salt',
+            'oats_dry':'Cereals oats regular quick not fortified dry',
+            'yogurt_greek':'Yogurt Greek plain nonfat',
+            'banana':'Bananas raw',
+            'blueberry':'Blueberries raw',
+            'walnut':'Nuts walnuts english',
+            'olive_oil':'Oil olive salad cooking',
+            'sesame':'Seeds sesame seeds whole dried',
+            'salmon_cooked':'Fish salmon Atlantic farmed cooked dry heat',
+            'lentils_cooked':'Lentils mature seeds cooked boiled without salt',
+            'turkey_cooked':'Turkey ground cooked',
+            'lettuce':'Lettuce cos romaine raw',
+            'egg':'Egg whole cooked hard boiled',
+            'cocoa':'Cocoa dry powder unsweetened'
+          }
+          output={'source':'USDA FoodData Central','license':'CC0-1.0','retrieved_at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'usage':'Bounded 20-query research snapshot with the documented public DEMO_KEY; not runtime credentials.','candidates':{}}
+          for key,q in queries.items():
+            body=json.dumps({'query':q,'dataType':['SR Legacy'],'pageSize':8}).encode()
+            req=urllib.request.Request('https://api.nal.usda.gov/fdc/v1/foods/search?api_key=DEMO_KEY',data=body,headers={'Content-Type':'application/json','User-Agent':'CUKI catalog research (https://github.com/vellxw/Cuki)'})
+            try:
+              with urllib.request.urlopen(req,timeout=25) as response:
+                output['candidates'][key]={'query':q,'result':json.load(response),'remaining':response.headers.get('X-RateLimit-Remaining')}
+            except urllib.error.HTTPError as e:
+              output['candidates'][key]={'query':q,'error':e.code}
+              if e.code==429:break
+            time.sleep(.5)
+          p=pathlib.Path('/tmp/cuki-food-sources/usda-candidates.json');p.write_text(json.dumps(output,ensure_ascii=False,indent=2))
+          p.with_suffix('.sha256').write_text(hashlib.sha256(p.read_bytes()).hexdigest())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-usda-source-snapshot
+          path: /tmp/cuki-food-sources/
+          retention-days: 30
