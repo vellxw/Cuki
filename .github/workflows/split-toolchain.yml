@@ -1,0 +1,53 @@
+name: CUKI transfer toolchain
+on:
+  push:
+    paths: ['.github/workflows/split-toolchain.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  split:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cuki-node-toolchain
+          path: /tmp/toolchain
+          run-id: 34880453598
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          cd /tmp/toolchain
+          sha256sum toolchain.tgz > SHA256SUMS
+          split -b 200M -d -a 2 toolchain.tgz toolchain.part.
+          sha256sum toolchain.part.* >> SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-toolchain-part-00
+          path: /tmp/toolchain/toolchain.part.00
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-toolchain-part-01
+          path: /tmp/toolchain/toolchain.part.01
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-toolchain-part-02
+          path: /tmp/toolchain/toolchain.part.02
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-toolchain-part-03
+          path: /tmp/toolchain/toolchain.part.03
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-toolchain-hashes
+          path: /tmp/toolchain/SHA256SUMS
+          retention-days: 7
