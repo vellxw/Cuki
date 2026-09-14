@@ -1,0 +1,75 @@
+name: CUKI toolchain provisioning
+on:
+  push:
+    paths: ['.github/workflows/toolchain.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dependencies:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Resolve SDK57-compatible dependencies
+        shell: bash
+        run: |
+          mkdir -p /tmp/cuki-toolchain
+          cd /tmp/cuki-toolchain
+          cat > package.json <<'JSON'
+          {
+            "name": "cuki-toolchain", "version": "2.0.0", "private": true, "type": "module",
+            "dependencies": {
+              "expo": "~57.0.0", "react": "19.2.3", "react-native": "0.86.3",
+              "expo-router": "~57.0.21", "expo-modules-core": "~57.0.18",
+              "expo-asset": "~57.0.17", "expo-gl": "~57.0.2", "expo-glass-effect": "~57.0.3",
+              "expo-blur": "~57.0.3", "expo-image": "~57.0.5", "expo-sqlite": "~57.0.3",
+              "expo-crypto": "~57.0.3", "expo-secure-store": "~57.0.4", "expo-constants": "~57.0.18",
+              "expo-camera": "~57.0.5", "expo-image-picker": "~57.0.17", "expo-image-manipulator": "~57.0.17",
+              "expo-file-system": "~57.0.7", "expo-sharing": "~57.0.19", "expo-haptics": "~57.0.3",
+              "expo-notifications": "~57.0.18", "expo-network": "~57.0.2", "expo-linking": "~57.0.10",
+              "expo-localization": "~57.0.2", "expo-status-bar": "~57.0.1", "expo-linear-gradient": "~57.0.2",
+              "expo-audio": "~57.0.5", "expo-keep-awake": "~57.0.2", "expo-build-properties": "~57.0.17",
+              "expo-dev-client": "~57.0.19", "expo-splash-screen": "~57.0.9", "expo-system-ui": "~57.0.4",
+              "react-native-gesture-handler": "~2.32.0", "react-native-reanimated": "4.5.1",
+              "react-native-worklets": "0.10.1", "react-native-screens": "~4.26.0",
+              "react-native-safe-area-context": "~5.7.0", "react-native-svg": "15.15.4",
+              "@shopify/react-native-skia": "2.6.2", "@react-three/fiber": "^9.0.0", "three": "^0.180.0",
+              "@tanstack/react-query": "^5.0.0", "zustand": "^5.0.0", "react-native-purchases": "^9.0.0",
+              "fastify": "^5.0.0", "pg": "^8.0.0", "jose": "^6.0.0", "zod": "^4.0.0",
+              "sharp": "^0.34.0"
+            },
+            "devDependencies": {
+              "typescript": "~5.9.3", "tsx": "^4.0.0", "@types/node": "^22.0.0",
+              "@types/react": "~19.2.0", "@types/three": "^0.180.0", "@types/pg": "^8.0.0",
+              "@testing-library/react-native": "^13.0.0", "react-test-renderer": "19.2.3",
+              "jest": "^29.7.0", "jest-expo": "~57.0.5", "@types/jest": "^29.5.0"
+            }
+          }
+          JSON
+          npm install --no-audit --no-fund 2>&1 | tee install.log
+          npm ls --depth=0 --json > dependency-report.json
+          node -e 'console.log(JSON.stringify({node:process.version,platform:process.platform,arch:process.arch,createdAt:new Date().toISOString()},null,2))' > environment.json
+          tar -czf toolchain.tgz package.json package-lock.json node_modules dependency-report.json environment.json
+      - name: Upload dependency toolchain
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cuki-node-toolchain
+          path: /tmp/cuki-toolchain/toolchain.tgz
+          retention-days: 7
+          compression-level: 0
+      - name: Upload provisioning diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cuki-toolchain-diagnostics
+          path: |
+            /tmp/cuki-toolchain/install.log
+            /tmp/cuki-toolchain/package*.json
+            /tmp/cuki-toolchain/dependency-report.json
+            /tmp/cuki-toolchain/environment.json
+          retention-days: 7
