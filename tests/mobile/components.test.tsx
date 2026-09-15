@@ -1,7 +1,7 @@
 import {jest,beforeEach,test,expect} from '@jest/globals';
 import React from 'react';
 import {fireEvent, render, screen} from '@testing-library/react-native';
-import {Button, MacroRow, Ring, Field, Dock} from '../../apps/mobile/src/ui/components';
+import {Button, MacroRow, Ring, Field, Dock, Screen, Txt} from '../../apps/mobile/src/ui/components';
 import {initialState} from '../../packages/core/state';
 import {router} from 'expo-router';
 jest.mock('../../apps/mobile/src/data/AppProvider',()=>({useApp:()=>({state:mockState,api:{configured:false},identity:null})}));
@@ -29,4 +29,21 @@ test('field presents its label and forwards corrected decimal input',()=>{
 test('central registration is an action, not a fifth tab destination',()=>{
  render(<Dock active="recipes"/>);fireEvent.press(screen.getByTestId('nav-register'));
  expect(router.push).toHaveBeenCalledWith({pathname:'/register',params:{returnTo:'/recipes'}});
+});
+
+test('only the navigator owns the dock, even on tab root screens',()=>{
+ render(<Screen back={false} tab="home"><Txt>Home content</Txt></Screen>);
+ expect(screen.getByText('Home content')).toBeTruthy();expect(screen.queryByTestId('cuki-dock')).toBeNull();
+});
+test('tab selection uses the tab navigator callback rather than a stack dismissal',()=>{
+ const select=jest.fn();render(<Dock active="home" onSelect={select}/>);
+ fireEvent.press(screen.getByRole('tab',{name:'Recetas'}));expect(select).toHaveBeenCalledWith('recipes');expect(router.dismissTo).not.toHaveBeenCalled();
+});
+test('fallback tab selection navigates without popping its containing stack',()=>{
+ render(<Dock active="home"/>);fireEvent.press(screen.getByTestId('nav-train'));
+ expect(router.navigate).toHaveBeenCalledWith('/(tabs)/train');expect(router.dismissTo).not.toHaveBeenCalled();
+});
+test('dock has a nonzero hit-tested parent and five unique targets',()=>{
+ render(<Dock active="recipes"/>);const style=require('react-native').StyleSheet.flatten(screen.getByTestId('cuki-dock').props.style);
+ expect(style.height).toBeGreaterThan(80);for(const name of ['home','recipes','register','train','progress'])expect(screen.getAllByTestId('nav-'+name)).toHaveLength(1);
 });

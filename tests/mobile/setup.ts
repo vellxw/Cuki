@@ -2,7 +2,7 @@ import {jest} from '@jest/globals';
 // Operating-system surfaces are replaced only for component tests. Native CI tests
 // the actual modules; passing this suite is not evidence of a compiled binary.
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), back: jest.fn(), canGoBack: () => true },
+  router: { navigate: jest.fn(), push: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), back: jest.fn(), canGoBack: () => true },
   useRouter: () => require('expo-router').router,
   useFocusEffect: () => {},
   usePathname: () => '/recipes',
