@@ -1,0 +1,28 @@
+name: CUKI source snapshot
+on:
+  push:
+    branches: [implementation/cuki-verified]
+    paths: [.github/workflows/source-snapshot.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Archive the checked-out source only
+        run: |
+          mkdir -p /tmp/cuki-snapshot
+          git rev-parse HEAD > /tmp/cuki-snapshot/COMMIT.txt
+          git archive --format=zip HEAD > /tmp/cuki-snapshot/source.zip
+          sha256sum /tmp/cuki-snapshot/source.zip > /tmp/cuki-snapshot/SHA256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-exact-source
+          path: /tmp/cuki-snapshot
+          retention-days: 30
+          if-no-files-found: error
