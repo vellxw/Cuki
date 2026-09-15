@@ -1,0 +1,24 @@
+import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
+import {invariant} from '../../../../packages/core/utils';
+export interface Identity {userId:string;email:string;verified:boolean}
+interface AuthSession {access_token:string;refresh_token:string;expires_at:number;user:{id:string;email?:string;email_confirmed_at?:string}}
+const config=Constants.expoConfig?.extra??{}, endpoint=String(config.authUrl??''), publicKey=String(config.authKey??''), storeKey='cuki.auth.v1';
+export const authConfigured=!!endpoint&&!!publicKey;
+let session:AuthSession|null=null,generation=0,refreshPromise:Promise<string|null>|null=null;
+let diskQueue:Promise<unknown>=Promise.resolve();
+function onDisk<T>(fn:()=>Promise<T>):Promise<T>{const next=diskQueue.then(fn,fn);diskQueue=next.catch(()=>{});return next;}
+export const authEpoch=()=>generation;
+export function identityOf():Identity|null{return session?{userId:session.user.id,email:session.user.email??'',verified:!!session.user.email_confirmed_at}:null}
+function validateSession(s:AuthSession){invariant(typeof s.access_token==='string'&&!!s.access_token&&typeof s.refresh_token==='string'&&!!s.refresh_token&&typeof s.user?.id==='string'&&!!s.user.id&&Number.isFinite(s.expires_at),'Sesión guardada no válida.');}
+export async function restoreSession(){const epoch=generation;return onDisk(async()=>{if(epoch!==generation)return identityOf();const raw=await SecureStore.getItemAsync(storeKey);if(epoch!==generation)return identityOf();if(raw){try{const value=JSON.parse(raw) as AuthSession;validateSession(value);session=value;}catch{await SecureStore.deleteItemAsync(storeKey);if(epoch===generation)session=null;}}return identityOf();});}
+async function authRequest(path:string,body:unknown,bearer?:string){invariant(authConfigured,'Falta configurar el servicio de cuenta. Podés seguir como invitado.');const res=await fetch(endpoint.replace(/\/$/,'')+'/auth/v1'+path,{method:'POST',headers:{apikey:publicKey,'Content-Type':'application/json',...(bearer?{Authorization:'Bearer '+bearer}:{})},body:JSON.stringify(body),signal:AbortSignal.timeout(25000)});const text=await res.text();let value;try{value=text?JSON.parse(text):{}}catch{throw new Error('El servicio de cuenta respondió con un formato no válido.');}if(!res.ok)throw new Error(value.msg??value.error_description??value.message??'No se pudo autenticar.');return value;}
+async function saveSession(value:AuthSession,expected:number){const next={...value,expires_at:value.expires_at??Math.floor(Date.now()/1000)+3600};validateSession(next);return onDisk(async()=>{invariant(generation===expected,'La cuenta cambió durante la solicitud.');await SecureStore.setItemAsync(storeKey,JSON.stringify(next),{keychainAccessible:SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY});if(generation!==expected){await SecureStore.deleteItemAsync(storeKey);throw new Error('La cuenta cambió durante la solicitud.');}session=next;return identityOf()!;});}
+function startAuthAttempt(){generation++;refreshPromise=null;return generation;}
+export async function signIn(email:string,password:string){const epoch=startAuthAttempt();return saveSession(await authRequest('/token?grant_type=password',{email,password}),epoch);}
+export async function signUp(email:string,password:string){const epoch=startAuthAttempt();const value=await authRequest('/signup',{email,password});if(value.access_token)return saveSession(value,epoch);invariant(generation===epoch,'La cuenta cambió durante la solicitud.');return null;}
+export async function sendOtp(email:string){return authRequest('/otp',{email,create_user:true});}
+export async function verifyOtp(email:string,token:string){const epoch=startAuthAttempt();return saveSession(await authRequest('/verify',{email,token,type:'email'}),epoch);}
+export async function resetPassword(email:string){return authRequest('/recover',{email});}
+export async function accessToken():Promise<string|null>{if(!session)return null;if(session.expires_at*1000>Date.now()+60000)return session.access_token;invariant(authConfigured,'La sesión necesita renovarse cuando esté disponible el servicio de cuenta.');if(refreshPromise)return refreshPromise;const epoch=generation,refresh=session.refresh_token;const pending=(async()=>{const value=await authRequest('/token?grant_type=refresh_token',{refresh_token:refresh});await saveSession(value,epoch);invariant(generation===epoch,'La cuenta cambió durante la solicitud.');return session!.access_token;})();refreshPromise=pending;void pending.finally(()=>{if(refreshPromise===pending)refreshPromise=null;}).catch(()=>{});return pending;}
+export async function logout(){generation++;refreshPromise=null;const token=session?.access_token;session=null;await onDisk(()=>SecureStore.deleteItemAsync(storeKey));if(token&&authConfigured)void authRequest('/logout',{},token).catch(()=>{});}
