@@ -1,13 +1,9 @@
-# CUKI — checkpoint de implementación
+# CUKI — reparación e integración en curso
 
-Estado: en desarrollo; no es una entrega instalable ni una app terminada.
+La base de esta reparación es el snapshot remoto 973de58250130ceb2eaeac669ae5d8325c319264, reconciliado por archivo con CUKI_Implementacion_Checkpoint_20260915.zip. No se reescribió la Home aprobada ni se reemplazaron las correcciones remotas de autenticación/sync/borradores.
 
-Se reconstruyeron manifiestos, configuración Expo/TypeScript, dominio tipado, motor de nutrición/entrenamiento/jardín, repositorio SQLite, sincronización/adaptadores, navegación nativa y once familias de pantallas que declaran los 87 estados móviles del blueprint. Declarar rutas no certifica recorridos. La Home mantiene su canon; la fidelidad aún no ha sido medida en binario.
+Restaurados: suites originales, consola administrativa y controles de verificación. Añadidas regresiones de autenticación concurrente, aislamiento de borradores y sincronización; pruebas de componentes con interfaces de sistema sustituidas. `npm test` no acepta suites vacías, omitidas ni sin resumen verificable. Corregida autorización del invitado para las rutas públicas. Eliminados dos imports de imágenes demo que no utiliza ninguna pantalla; las capturas de usuario no se sustituyen por ellas.
 
-Verificación actual: TypeScript sin errores en este checkpoint. No hay pruebas nuevas ejecutadas ni builds nativos comprobados todavía. El log `artifacts/verify-final.log` es histórico y NO verifica este código.
+Verificación local de esta reparación: TypeScript; 35 pruebas core, 19 API/SQL y 6 componentes; bundles Android/iOS. Esto usa dependencias recuperadas y NO acredita instalación limpia ni binarios nativos. La CI volverá a verificar desde npm ci. Integración SQL local con PGlite no equivale a PostgreSQL externo ni proveedores reales.
 
-Pendientes: backend/worker/admin completos, módulos de salud del sistema, pruebas unitarias/integración/E2E, builds Android/iOS, comparación de screenshots y reparación funcional/visual. Los servicios de proveedor no están configurados.
-
-Dependencias locales recuperadas para compilar tipos: Expo 57 / React Native 0.86.3 / React 19.2.3, Node 22.16.0. El lockfile aún requiere verificación `npm ci` en clon limpio. La aplicación no necesita el symlink de node_modules del entorno: esa dependencia no se incluye.
-
-El checkpoint se conserva por completo en archivos; la publicación de avances continúa en `implementation/cuki-v2-native`. No elevar main ni declarar producción hasta pasar los criterios.
+Próximo bloque: CI rápida desde fuente completa, APK autónomo y simulador iOS, recorridos con persistencia y capturas nativas. No hay todavía binario instalado de esta revisión ni comparación visual aprobada. Servicios externos (IA, stores, hosting, Health) se deben validar por separado. La app no está declarada completa.
