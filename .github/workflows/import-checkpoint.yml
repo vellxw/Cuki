@@ -1,0 +1,66 @@
+name: CUKI source checkpoint
+on:
+  push:
+    branches: [feat/cuki-native-integrated]
+    paths: ['.github/imports/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: cuki-source-import
+  cancel-in-progress: false
+jobs:
+  import:
+    if: github.repository == 'vellxw/Cuki'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/cuki-native-integrated
+          fetch-depth: 0
+      - name: Validate and materialize source payloads
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, hashlib, io, json, pathlib, tarfile
+          root=pathlib.Path('.').resolve()
+          receipts=root/'artifacts/import-receipts'; receipts.mkdir(parents=True,exist_ok=True)
+          for f in sorted((root/'.github/imports').glob('*.json')):
+            receipt=receipts/(f.stem+'.json')
+            if receipt.exists(): continue
+            p=json.loads(f.read_text()); raw=base64.b64decode(p['gzip_base64'],validate=True)
+            assert hashlib.sha256(raw).hexdigest()==p['sha256']
+            assert len(raw)<20000000
+            data=gzip.decompress(raw); assert len(data)<100000000
+            with tarfile.open(fileobj=io.BytesIO(data),mode='r:') as tar:
+              entries=tar.getmembers()
+              for m in entries:
+                path=pathlib.PurePosixPath(m.name)
+                assert m.isfile() and not path.is_absolute() and '..' not in path.parts
+                assert path.parts[0] not in ('.git','.github','node_modules')
+                assert not any(part in ('node_modules','.env','private') for part in path.parts)
+                assert not m.name.endswith(('.pem','.key','.keystore','.p12'))
+                assert m.size<20000000
+              for m in entries:
+                dest=root/m.name;dest.parent.mkdir(parents=True,exist_ok=True)
+                content=tar.extractfile(m).read();dest.write_bytes(content)
+            receipt.write_text(json.dumps({'payload_sha256':p['sha256'],'files':len(entries),'status':'source preserved; not a build certification'},indent=2))
+          PY
+      - name: Commit checkpoint without replacing history
+        run: |
+          git config user.name 'CUKI checkpoint bot'
+          git config user.email '102954609+vellxw@users.noreply.github.com'
+          git add apps packages scripts infra docs spec tests artifacts PROJECT_STATE.md README.md package.json package-lock.json tsconfig.json .nvmrc .npmrc .gitignore 2>/dev/null || git add -u
+          git add artifacts/import-receipts
+          if ! git diff --cached --quiet; then git commit -m 'wip: preserve integrated source checkpoint'; git push origin HEAD:feat/cuki-native-integrated; fi
+      - name: Back up complete tracked snapshot
+        run: |
+          git archive --format=zip --output=CUKI_Source_Checkpoint.zip HEAD
+          sha256sum CUKI_Source_Checkpoint.zip > CUKI_Source_Checkpoint.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-source-checkpoint
+          path: |
+            CUKI_Source_Checkpoint.zip
+            CUKI_Source_Checkpoint.sha256
+          retention-days: 30
