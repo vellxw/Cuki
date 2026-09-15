@@ -1,16 +1,13 @@
-# CUKI — ejecución verificable, 15 de septiembre de 2026
+# CUKI — checkpoint de implementación
 
-## Estado actual
-El cliente nativo completo recuperado está consolidado localmente con los módulos internos, SQLite, render procedural y los cuatro assets de producción. Se añadieron API Fastify, PostgreSQL/RLS, autenticación local de desarrollo y Supabase configurables, worker de IA, moderación administrativa, privacidad, cuotas y jardín/recompensas. Los archivos se publican por lotes: este commit intermedio todavía no es ejecutable ni certifica producto terminado.
+Estado: en desarrollo; no es una entrega instalable ni una app terminada.
 
-## Verificación de esta ejecución
-- Node 22.16.0, TypeScript 5.9.3: typecheck sin errores tras correcciones en el workspace consolidado.
-- 17 pruebas de integración aprobadas, 0 fallidas en el workspace: Fastify y PostgreSQL en PGlite, incluidas RLS entre usuarios, cuotas concurrentes, jobs con proveedor IA contractual explícito, media, moderación, borrado y 52 ventanas de jardín/cosecha concurrente.
-- Registro conservado en el ZIP de checkpoint. El log histórico NO valida este commit.
-- No hay todavía APK/IPA, ejecución en simulador iOS ni captura nativa verificada de esta revisión. No se ha aprobado fidelidad pixel-perfect, rendimiento en dispositivo ni servicios de pago reales.
+Se reconstruyeron manifiestos, configuración Expo/TypeScript, dominio tipado, motor de nutrición/entrenamiento/jardín, repositorio SQLite, sincronización/adaptadores, navegación nativa y once familias de pantallas que declaran los 87 estados móviles del blueprint. Declarar rutas no certifica recorridos. La Home mantiene su canon; la fidelidad aún no ha sido medida en binario.
 
-## Pendientes importantes
-Terminar publicación del código y assets, pruebas del cliente, reconciliar lockfile/manifiestos, instalar desde clon limpio, ejecutar builds nativos y comparar el canon. HealthKit/Health Connect y widgets todavía requieren módulos nativos. El canje para una suscripción ya activa se conserva sin descuento: la integración de beneficio adicional de tienda está pendiente. No hay proveedores IA/compras configurados en producción.
+Verificación actual: TypeScript sin errores en este checkpoint. No hay pruebas nuevas ejecutadas ni builds nativos comprobados todavía. El log `artifacts/verify-final.log` es histórico y NO verifica este código.
 
-## Conservación
-El ZIP CUKI_Implementacion_EnCurso_2026-09-15.zip enlazado en la conversación conserva 139 archivos del workspace consolidado con hashes. No incluye secretos, fuentes tipográficas, bases personales, caches ni dependencias. La rama pública es implementation/cuki-verified; main no representa la implementación consolidada.
+Pendientes: backend/worker/admin completos, módulos de salud del sistema, pruebas unitarias/integración/E2E, builds Android/iOS, comparación de screenshots y reparación funcional/visual. Los servicios de proveedor no están configurados.
+
+Dependencias locales recuperadas para compilar tipos: Expo 57 / React Native 0.86.3 / React 19.2.3, Node 22.16.0. El lockfile aún requiere verificación `npm ci` en clon limpio. La aplicación no necesita el symlink de node_modules del entorno: esa dependencia no se incluye.
+
+El checkpoint se conserva por completo en archivos; la publicación de avances continúa en `implementation/cuki-v2-native`. No elevar main ni declarar producción hasta pasar los criterios.

@@ -1,4 +1,4 @@
-node_modules
+node_modules/
 .env
 .env.*
 !.env.example
@@ -17,3 +17,5 @@ coverage/
 .DS_Store
 private-references/
 artifacts/native/**/*.app/
+
+node_modules

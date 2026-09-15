@@ -1,0 +1,8 @@
+import Purchases,{type PurchasesPackage,LOG_LEVEL} from 'react-native-purchases';import {Platform,Linking} from 'react-native';import Constants from 'expo-constants';import {invariant} from '../../../../packages/core/utils';
+let configured=false,currentUser:string|null=null;
+export async function setupPurchases(userId:string){invariant(Platform.OS==='ios'||Platform.OS==='android','Las compras se hacen en la app nativa.');const extra=Constants.expoConfig?.extra??{},key=String(Platform.OS==='ios'?extra.revenueCatIos??'':extra.revenueCatAndroid??'');invariant(key,'Los productos de la tienda todavía no están configurados.');if(!configured){Purchases.setLogLevel(LOG_LEVEL.ERROR);Purchases.configure({apiKey:key,appUserID:userId});configured=true;currentUser=userId}else if(currentUser!==userId){await Purchases.logIn(userId);currentUser=userId}}
+export async function packages(userId:string){await setupPurchases(userId);const offerings=await Purchases.getOfferings();return offerings.current?.availablePackages??[]}
+export async function purchase(userId:string,pkg:PurchasesPackage){await setupPurchases(userId);return Purchases.purchasePackage(pkg)}
+export async function restore(userId:string){await setupPurchases(userId);return Purchases.restorePurchases()}
+export async function manage(userId:string){await setupPurchases(userId);const info=await Purchases.getCustomerInfo();const url=info.managementURL;invariant(url,'No hay un vínculo de gestión informado por la tienda.');const u=new URL(url);invariant(u.protocol==='https:'&&['apps.apple.com','play.google.com','account.apple.com'].includes(u.hostname),'El vínculo de gestión no pertenece a una tienda permitida.');await Linking.openURL(url)}
+export type StorePackage=PurchasesPackage;

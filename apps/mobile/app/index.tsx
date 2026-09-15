@@ -1,0 +1,1 @@
+import {Redirect} from 'expo-router';import {useApp} from '../src/data/AppProvider';export default function Index(){const {state}=useApp();return <Redirect href={state.profile.onboarded?'/(tabs)/home':'/screen/SC-01'}/>}

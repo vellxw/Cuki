@@ -1,0 +1,1 @@
+import {useLocalSearchParams} from 'expo-router';import {Register} from '../src/screens/Foods';export default function(){const params=useLocalSearchParams<Record<string,string>>();return <Register params={params}/>}

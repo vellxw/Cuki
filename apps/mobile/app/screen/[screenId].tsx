@@ -1,0 +1,1 @@
+import {useLocalSearchParams} from 'expo-router';import {ScreenRouter} from '../../src/screens/registry';export default function(){const {screenId,...params}=useLocalSearchParams<Record<string,string>>();return <ScreenRouter screen={screenId} params={params}/>}

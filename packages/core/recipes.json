@@ -1,0 +1,1066 @@
+[
+  {
+    "id": "cuki-bowl-pollo",
+    "version": 1,
+    "title": "Bowl de pollo, arroz y palta",
+    "description": "Receta original de CUKI. Ajustá la cantidad a tu porción.",
+    "authorId": "cuki-editorial",
+    "authorName": "CUKI editorial",
+    "visibility": "editorial",
+    "minutes": 20,
+    "servings": 1,
+    "cookedYield": null,
+    "photoUri": null,
+    "assetKey": "bowl",
+    "tags": [
+      "Proteína",
+      "Sin gluten"
+    ],
+    "ingredients": [
+      {
+        "id": "cuki-bowl-pollo-i0",
+        "foodId": "usda-171477",
+        "foodVersion": 1,
+        "grams": 138,
+        "snapshot": {
+          "id": "usda-171477",
+          "version": 1,
+          "name": "Pechuga de pollo asada",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "cooked",
+          "nutrients": {
+            "energy": 165,
+            "protein": 31.0,
+            "carbs": 0.0,
+            "fat": 3.57,
+            "fiber": 0.0,
+            "sugar": 0.0,
+            "sodium": 74.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 171477",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/171477/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-bowl-pollo-i1",
+        "foodId": "usda-169704",
+        "foodVersion": 1,
+        "grams": 165,
+        "snapshot": {
+          "id": "usda-169704",
+          "version": 1,
+          "name": "Arroz integral cocido",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "cooked",
+          "nutrients": {
+            "energy": 123,
+            "protein": 2.74,
+            "carbs": 25.6,
+            "fat": 0.97,
+            "fiber": 1.6,
+            "sugar": 0.24,
+            "sodium": 4.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 169704",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/169704/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-bowl-pollo-i2",
+        "foodId": "usda-171705",
+        "foodVersion": 1,
+        "grams": 46,
+        "snapshot": {
+          "id": "usda-171705",
+          "version": 1,
+          "name": "Palta",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "raw",
+          "nutrients": {
+            "energy": 160,
+            "protein": 2.0,
+            "carbs": 8.53,
+            "fat": 14.7,
+            "fiber": 6.7,
+            "sugar": 0.66,
+            "sodium": 7.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 171705",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/171705/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-bowl-pollo-i3",
+        "foodId": "usda-170457",
+        "foodVersion": 1,
+        "grams": 72,
+        "snapshot": {
+          "id": "usda-170457",
+          "version": 1,
+          "name": "Tomate",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "raw",
+          "nutrients": {
+            "energy": 18.0,
+            "protein": 0.88,
+            "carbs": 3.89,
+            "fat": 0.2,
+            "fiber": 1.2,
+            "sugar": 2.63,
+            "sodium": 5.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 170457",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/170457/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "cuki-bowl-pollo-s0",
+        "text": "Pesá el pollo y el arroz ya cocidos, según el estado de cada alimento de la receta.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-bowl-pollo-s1",
+        "text": "Cortá la palta y el tomate sobre una tabla limpia.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-bowl-pollo-s2",
+        "text": "Serví el arroz, el pollo y las verduras en un bowl. Los aceites o salsas que añadas se registran por separado.",
+        "seconds": null
+      }
+    ],
+    "createdAt": "2026-09-14T00:00:00Z",
+    "upvotes": 0
+  },
+  {
+    "id": "cuki-avena",
+    "version": 1,
+    "title": "Avena con yogur y banana",
+    "description": "Receta original de CUKI. Ajustá la cantidad a tu porción.",
+    "authorId": "cuki-editorial",
+    "authorName": "CUKI editorial",
+    "visibility": "editorial",
+    "minutes": 5,
+    "servings": 1,
+    "cookedYield": null,
+    "photoUri": null,
+    "assetKey": null,
+    "tags": [
+      "Rápida",
+      "Vegetariana"
+    ],
+    "ingredients": [
+      {
+        "id": "cuki-avena-i0",
+        "foodId": "usda-173904",
+        "foodVersion": 1,
+        "grams": 40,
+        "snapshot": {
+          "id": "usda-173904",
+          "version": 1,
+          "name": "Avena seca",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "as_sold",
+          "nutrients": {
+            "energy": 379,
+            "protein": 13.2,
+            "carbs": 67.7,
+            "fat": 6.52,
+            "fiber": 10.1,
+            "sugar": 0.99,
+            "sodium": 6.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 173904",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/173904/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-avena-i1",
+        "foodId": "usda-170894",
+        "foodVersion": 1,
+        "grams": 170,
+        "snapshot": {
+          "id": "usda-170894",
+          "version": 1,
+          "name": "Yogur griego natural descremado",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "as_sold",
+          "nutrients": {
+            "energy": 59.0,
+            "protein": 10.2,
+            "carbs": 3.6,
+            "fat": 0.39,
+            "fiber": 0.0,
+            "sugar": 3.24,
+            "sodium": 36.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 170894",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/170894/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-avena-i2",
+        "foodId": "usda-173944",
+        "foodVersion": 1,
+        "grams": 100,
+        "snapshot": {
+          "id": "usda-173944",
+          "version": 1,
+          "name": "Banana",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "raw",
+          "nutrients": {
+            "energy": 89.0,
+            "protein": 1.09,
+            "carbs": 22.8,
+            "fat": 0.33,
+            "fiber": 2.6,
+            "sugar": 12.2,
+            "sodium": 1.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 173944",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/173944/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "cuki-avena-s0",
+        "text": "Mezclá la avena con el yogur y un poco de agua si necesitás aligerarlo.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-avena-s1",
+        "text": "Refrigerá en un recipiente cerrado hasta que la avena se hidrate.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-avena-s2",
+        "text": "Añadí la banana cortada justo antes de comer.",
+        "seconds": null
+      }
+    ],
+    "createdAt": "2026-09-14T00:00:00Z",
+    "upvotes": 0
+  },
+  {
+    "id": "cuki-arroz-verde",
+    "version": 1,
+    "title": "Arroz integral con soja verde",
+    "description": "Receta original de CUKI. Ajustá la cantidad a tu porción.",
+    "authorId": "cuki-editorial",
+    "authorName": "CUKI editorial",
+    "visibility": "editorial",
+    "minutes": 15,
+    "servings": 1,
+    "cookedYield": null,
+    "photoUri": null,
+    "assetKey": null,
+    "tags": [
+      "Vegetariana"
+    ],
+    "ingredients": [
+      {
+        "id": "cuki-arroz-verde-i0",
+        "foodId": "usda-169704",
+        "foodVersion": 1,
+        "grams": 170,
+        "snapshot": {
+          "id": "usda-169704",
+          "version": 1,
+          "name": "Arroz integral cocido",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "cooked",
+          "nutrients": {
+            "energy": 123,
+            "protein": 2.74,
+            "carbs": 25.6,
+            "fat": 0.97,
+            "fiber": 1.6,
+            "sugar": 0.24,
+            "sodium": 4.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 169704",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/169704/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-arroz-verde-i1",
+        "foodId": "usda-169283",
+        "foodVersion": 1,
+        "grams": 100,
+        "snapshot": {
+          "id": "usda-169283",
+          "version": 1,
+          "name": "Soja verde cocida, sin sal",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "cooked",
+          "nutrients": {
+            "energy": 141,
+            "protein": 12.4,
+            "carbs": 11.0,
+            "fat": 6.4,
+            "fiber": 4.2,
+            "sugar": null,
+            "sodium": 14.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 169283",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/169283/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-arroz-verde-i2",
+        "foodId": "usda-169967",
+        "foodVersion": 1,
+        "grams": 150,
+        "snapshot": {
+          "id": "usda-169967",
+          "version": 1,
+          "name": "Brócoli hervido, sin sal",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "cooked",
+          "nutrients": {
+            "energy": 35.0,
+            "protein": 2.38,
+            "carbs": 7.18,
+            "fat": 0.41,
+            "fiber": 3.3,
+            "sugar": 1.39,
+            "sodium": 41.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 169967",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/169967/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "cuki-arroz-verde-s0",
+        "text": "Usá arroz, soja verde y brócoli ya cocidos según las cantidades indicadas.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-arroz-verde-s1",
+        "text": "Calentá y mezclá en un bowl.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-arroz-verde-s2",
+        "text": "Cualquier aceite, salsa u otro ingrediente se incorpora a la receta antes de registrar.",
+        "seconds": null
+      }
+    ],
+    "createdAt": "2026-09-14T00:00:00Z",
+    "upvotes": 0
+  },
+  {
+    "id": "cuki-pollo-brocoli",
+    "version": 1,
+    "title": "Pollo con brócoli y arroz",
+    "description": "Receta original de CUKI. Ajustá la cantidad a tu porción.",
+    "authorId": "cuki-editorial",
+    "authorName": "CUKI editorial",
+    "visibility": "editorial",
+    "minutes": 20,
+    "servings": 1,
+    "cookedYield": null,
+    "photoUri": null,
+    "assetKey": null,
+    "tags": [
+      "Proteína"
+    ],
+    "ingredients": [
+      {
+        "id": "cuki-pollo-brocoli-i0",
+        "foodId": "usda-171477",
+        "foodVersion": 1,
+        "grams": 150,
+        "snapshot": {
+          "id": "usda-171477",
+          "version": 1,
+          "name": "Pechuga de pollo asada",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "cooked",
+          "nutrients": {
+            "energy": 165,
+            "protein": 31.0,
+            "carbs": 0.0,
+            "fat": 3.57,
+            "fiber": 0.0,
+            "sugar": 0.0,
+            "sodium": 74.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 171477",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/171477/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-pollo-brocoli-i1",
+        "foodId": "usda-169967",
+        "foodVersion": 1,
+        "grams": 150,
+        "snapshot": {
+          "id": "usda-169967",
+          "version": 1,
+          "name": "Brócoli hervido, sin sal",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "cooked",
+          "nutrients": {
+            "energy": 35.0,
+            "protein": 2.38,
+            "carbs": 7.18,
+            "fat": 0.41,
+            "fiber": 3.3,
+            "sugar": 1.39,
+            "sodium": 41.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 169967",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/169967/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-pollo-brocoli-i2",
+        "foodId": "usda-168878",
+        "foodVersion": 1,
+        "grams": 160,
+        "snapshot": {
+          "id": "usda-168878",
+          "version": 1,
+          "name": "Arroz blanco cocido",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "cooked",
+          "nutrients": {
+            "energy": 130,
+            "protein": 2.69,
+            "carbs": 28.2,
+            "fat": 0.28,
+            "fiber": 0.4,
+            "sugar": 0.05,
+            "sodium": 1.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 168878",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/168878/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "cuki-pollo-brocoli-s0",
+        "text": "Pesá los alimentos una vez cocidos.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-pollo-brocoli-s1",
+        "text": "Serví el pollo junto al arroz y el brócoli.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-pollo-brocoli-s2",
+        "text": "Guardá las porciones restantes refrigeradas en recipientes limpios.",
+        "seconds": null
+      }
+    ],
+    "createdAt": "2026-09-14T00:00:00Z",
+    "upvotes": 0
+  },
+  {
+    "id": "cuki-yogur-fruta",
+    "version": 1,
+    "title": "Yogur con fruta",
+    "description": "Receta original de CUKI. Ajustá la cantidad a tu porción.",
+    "authorId": "cuki-editorial",
+    "authorName": "CUKI editorial",
+    "visibility": "editorial",
+    "minutes": 5,
+    "servings": 1,
+    "cookedYield": null,
+    "photoUri": null,
+    "assetKey": null,
+    "tags": [
+      "Rápida",
+      "Vegetariana"
+    ],
+    "ingredients": [
+      {
+        "id": "cuki-yogur-fruta-i0",
+        "foodId": "usda-170894",
+        "foodVersion": 1,
+        "grams": 200,
+        "snapshot": {
+          "id": "usda-170894",
+          "version": 1,
+          "name": "Yogur griego natural descremado",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "as_sold",
+          "nutrients": {
+            "energy": 59.0,
+            "protein": 10.2,
+            "carbs": 3.6,
+            "fat": 0.39,
+            "fiber": 0.0,
+            "sugar": 3.24,
+            "sodium": 36.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 170894",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/170894/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-yogur-fruta-i1",
+        "foodId": "usda-173944",
+        "foodVersion": 1,
+        "grams": 80,
+        "snapshot": {
+          "id": "usda-173944",
+          "version": 1,
+          "name": "Banana",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "raw",
+          "nutrients": {
+            "energy": 89.0,
+            "protein": 1.09,
+            "carbs": 22.8,
+            "fat": 0.33,
+            "fiber": 2.6,
+            "sugar": 12.2,
+            "sodium": 1.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 173944",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/173944/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-yogur-fruta-i2",
+        "foodId": "usda-169124",
+        "foodVersion": 1,
+        "grams": 100,
+        "snapshot": {
+          "id": "usda-169124",
+          "version": 1,
+          "name": "Ananá",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "raw",
+          "nutrients": {
+            "energy": 50.0,
+            "protein": 0.54,
+            "carbs": 13.1,
+            "fat": 0.12,
+            "fiber": 1.4,
+            "sugar": 9.85,
+            "sodium": 1.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 169124",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/169124/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "cuki-yogur-fruta-s0",
+        "text": "Lavá y prepará la fruta.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-yogur-fruta-s1",
+        "text": "Cortá en trozos y serví sobre el yogur.",
+        "seconds": null
+      }
+    ],
+    "createdAt": "2026-09-14T00:00:00Z",
+    "upvotes": 0
+  },
+  {
+    "id": "cuki-ensalada",
+    "version": 1,
+    "title": "Ensalada de tomate, palta y rúcula",
+    "description": "Receta original de CUKI. Ajustá la cantidad a tu porción.",
+    "authorId": "cuki-editorial",
+    "authorName": "CUKI editorial",
+    "visibility": "editorial",
+    "minutes": 10,
+    "servings": 1,
+    "cookedYield": null,
+    "photoUri": null,
+    "assetKey": null,
+    "tags": [
+      "Vegetariana",
+      "Rápida"
+    ],
+    "ingredients": [
+      {
+        "id": "cuki-ensalada-i0",
+        "foodId": "usda-170457",
+        "foodVersion": 1,
+        "grams": 150,
+        "snapshot": {
+          "id": "usda-170457",
+          "version": 1,
+          "name": "Tomate",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "raw",
+          "nutrients": {
+            "energy": 18.0,
+            "protein": 0.88,
+            "carbs": 3.89,
+            "fat": 0.2,
+            "fiber": 1.2,
+            "sugar": 2.63,
+            "sodium": 5.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 170457",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/170457/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-ensalada-i1",
+        "foodId": "usda-171705",
+        "foodVersion": 1,
+        "grams": 70,
+        "snapshot": {
+          "id": "usda-171705",
+          "version": 1,
+          "name": "Palta",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "raw",
+          "nutrients": {
+            "energy": 160,
+            "protein": 2.0,
+            "carbs": 8.53,
+            "fat": 14.7,
+            "fiber": 6.7,
+            "sugar": 0.66,
+            "sodium": 7.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 171705",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/171705/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-ensalada-i2",
+        "foodId": "usda-169387",
+        "foodVersion": 1,
+        "grams": 40,
+        "snapshot": {
+          "id": "usda-169387",
+          "version": 1,
+          "name": "Rúcula",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "raw",
+          "nutrients": {
+            "energy": 25.0,
+            "protein": 2.58,
+            "carbs": 3.65,
+            "fat": 0.66,
+            "fiber": 1.6,
+            "sugar": 2.05,
+            "sodium": 27.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 169387",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/169387/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "cuki-ensalada-s0",
+        "text": "Lavá el tomate y la rúcula.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-ensalada-s1",
+        "text": "Cortá el tomate y la palta. Mezclá al servir.",
+        "seconds": null
+      }
+    ],
+    "createdAt": "2026-09-14T00:00:00Z",
+    "upvotes": 0
+  },
+  {
+    "id": "cuki-bowl-arvejas",
+    "version": 1,
+    "title": "Bowl de arroz y arvejas",
+    "description": "Receta original de CUKI. Ajustá la cantidad a tu porción.",
+    "authorId": "cuki-editorial",
+    "authorName": "CUKI editorial",
+    "visibility": "editorial",
+    "minutes": 15,
+    "servings": 1,
+    "cookedYield": null,
+    "photoUri": null,
+    "assetKey": null,
+    "tags": [
+      "Vegetariana"
+    ],
+    "ingredients": [
+      {
+        "id": "cuki-bowl-arvejas-i0",
+        "foodId": "usda-169704",
+        "foodVersion": 1,
+        "grams": 160,
+        "snapshot": {
+          "id": "usda-169704",
+          "version": 1,
+          "name": "Arroz integral cocido",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "cooked",
+          "nutrients": {
+            "energy": 123,
+            "protein": 2.74,
+            "carbs": 25.6,
+            "fat": 0.97,
+            "fiber": 1.6,
+            "sugar": 0.24,
+            "sodium": 4.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 169704",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/169704/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-bowl-arvejas-i1",
+        "foodId": "usda-170420",
+        "foodVersion": 1,
+        "grams": 130,
+        "snapshot": {
+          "id": "usda-170420",
+          "version": 1,
+          "name": "Arvejas hervidas, sin sal",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "cooked",
+          "nutrients": {
+            "energy": 84.0,
+            "protein": 5.36,
+            "carbs": 15.6,
+            "fat": 0.22,
+            "fiber": 5.5,
+            "sugar": 5.93,
+            "sodium": 3.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 170420",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/170420/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-bowl-arvejas-i2",
+        "foodId": "usda-170393",
+        "foodVersion": 1,
+        "grams": 60,
+        "snapshot": {
+          "id": "usda-170393",
+          "version": 1,
+          "name": "Zanahoria",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "raw",
+          "nutrients": {
+            "energy": 41.0,
+            "protein": 0.93,
+            "carbs": 9.58,
+            "fat": 0.24,
+            "fiber": 2.8,
+            "sugar": 4.74,
+            "sodium": 69.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 170393",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/170393/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "cuki-bowl-arvejas-s0",
+        "text": "Prepará el arroz y las arvejas cocidos.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-bowl-arvejas-s1",
+        "text": "Rallá la zanahoria lavada y mezclá al servir.",
+        "seconds": null
+      }
+    ],
+    "createdAt": "2026-09-14T00:00:00Z",
+    "upvotes": 0
+  },
+  {
+    "id": "cuki-desayuno",
+    "version": 1,
+    "title": "Desayuno de avena y yogur entero",
+    "description": "Receta original de CUKI. Ajustá la cantidad a tu porción.",
+    "authorId": "cuki-editorial",
+    "authorName": "CUKI editorial",
+    "visibility": "editorial",
+    "minutes": 5,
+    "servings": 1,
+    "cookedYield": null,
+    "photoUri": null,
+    "assetKey": null,
+    "tags": [
+      "Vegetariana",
+      "Rápida"
+    ],
+    "ingredients": [
+      {
+        "id": "cuki-desayuno-i0",
+        "foodId": "usda-173904",
+        "foodVersion": 1,
+        "grams": 50,
+        "snapshot": {
+          "id": "usda-173904",
+          "version": 1,
+          "name": "Avena seca",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "as_sold",
+          "nutrients": {
+            "energy": 379,
+            "protein": 13.2,
+            "carbs": 67.7,
+            "fat": 6.52,
+            "fiber": 10.1,
+            "sugar": 0.99,
+            "sodium": 6.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 173904",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/173904/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-desayuno-i1",
+        "foodId": "usda-171304",
+        "foodVersion": 1,
+        "grams": 150,
+        "snapshot": {
+          "id": "usda-171304",
+          "version": 1,
+          "name": "Yogur griego natural entero",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "as_sold",
+          "nutrients": {
+            "energy": 97.0,
+            "protein": 9.0,
+            "carbs": 3.98,
+            "fat": 5.0,
+            "fiber": 0.0,
+            "sugar": 4.0,
+            "sodium": 35.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 171304",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/171304/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      },
+      {
+        "id": "cuki-desayuno-i2",
+        "foodId": "usda-173944",
+        "foodVersion": 1,
+        "grams": 80,
+        "snapshot": {
+          "id": "usda-173944",
+          "version": 1,
+          "name": "Banana",
+          "brand": "",
+          "basis": "per_100g",
+          "preparation": "raw",
+          "nutrients": {
+            "energy": 89.0,
+            "protein": 1.09,
+            "carbs": 22.8,
+            "fat": 0.33,
+            "fiber": 2.6,
+            "sugar": 12.2,
+            "sodium": 1.0
+          },
+          "source": "USDA FoodData Central · SR Legacy · 173944",
+          "sourceUrl": "https://fdc.nal.usda.gov/food-details/173944/nutrients",
+          "license": "CC0-1.0",
+          "market": "US",
+          "gtin": null,
+          "servings": [],
+          "state": "editorial",
+          "updatedAt": "2026-09-14T19:36:09Z"
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "cuki-desayuno-s0",
+        "text": "Mezclá avena y yogur.",
+        "seconds": null
+      },
+      {
+        "id": "cuki-desayuno-s1",
+        "text": "Añadí la banana y ajustá la textura con agua.",
+        "seconds": null
+      }
+    ],
+    "createdAt": "2026-09-14T00:00:00Z",
+    "upvotes": 0
+  }
+]

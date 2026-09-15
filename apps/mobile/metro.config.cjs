@@ -1,1 +1,1 @@
-const {getDefaultConfig}=require('expo/metro-config');const config=getDefaultConfig(__dirname);if(!config.resolver.assetExts.includes('avif'))config.resolver.assetExts.push('avif');module.exports=config;
+const {getDefaultConfig}=require('expo/metro-config'); module.exports=getDefaultConfig(__dirname);
