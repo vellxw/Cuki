@@ -82,14 +82,14 @@
     "migrate": "node --env-file-if-exists=.env --import tsx scripts/migrate.ts",
     "seed": "node --env-file-if-exists=.env --import tsx scripts/seed.ts",
     "typecheck": "tsc --noEmit",
-    "test:core": "tsx --test tests/core/*.test.ts",
-    "test:integration": "tsx --test tests/integration/*.test.ts",
+    "test:core": "node scripts/test-runner.mjs core",
+    "test:integration": "node scripts/test-runner.mjs integration",
     "test:mobile": "jest --runInBand --config jest.config.cjs",
     "verify": "node scripts/verify.mjs",
     "admin": "node --env-file-if-exists=.env --import tsx apps/api/src/index.ts",
     "export:android": "npm run export:android -w @cuki/mobile",
     "export:ios": "npm run export:ios -w @cuki/mobile",
-    "test": "npm run test:core && npm run test:integration",
+    "test": "npm run test:core && npm run test:integration && npm run test:mobile",
     "setup:local": "node scripts/bootstrap.mjs"
   }
 }

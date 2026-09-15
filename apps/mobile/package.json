@@ -7,8 +7,8 @@
     "start": "expo start --dev-client",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "export:android": "expo export --platform android",
-    "export:ios": "expo export --platform ios"
+    "export:android": "expo export --platform android --max-workers 2",
+    "export:ios": "expo export --platform ios --max-workers 2"
   },
   "dependencies": {
     "expo": "~57.0.0",
