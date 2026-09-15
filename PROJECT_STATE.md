@@ -1,13 +1,7 @@
-# CUKI — execution checkpoint
+# CUKI — reconstrucción nativa en curso
 
-Status: **in progress, not an installable delivery**.
+No es una entrega completa ni instalable todavía. La publicación directa conserva progresivamente los archivos reales reconstruidos, no solamente el log histórico. La transferencia del respaldo mediante enlace firmado falló con HTTP 403, por lo que no se usa esa ruta. Los checkpoints privados de fuentes se conservan y los archivos se publican por las operaciones normales del conector GitHub.
 
-Starting point: main `9d69c4d61934911daf136760e187f7a06374c5f4`. Only five recovered TSX files and a historical log are present at that revision. The historical 279-test claim is NOT verification of this branch.
+El cliente local cuenta con TypeScript estricto, componentes nativos, SQLite, motores y 87 rutas declaradas. Esto no verifica 87 recorridos ni acredita fidelidad visual. La suite nueva de dominio/SQLite pasó 39 pruebas; se publicará su código y se repetirá desde este repositorio antes de atribuir el resultado a un commit remoto. El log anterior se conserva como histórico.
 
-The canonical v2 blueprint and six original visual references have been recovered from the conversation archive. The approved Home composition will not be redesigned. Third-party inspiration images are private references, not distributable application assets.
-
-Local environment: Linux, Node 22.16.0, Java 21. No Android SDK, macOS/Xcode, Docker, or KVM has been found. Direct DNS requests to the npm registry and github.com failed. The authorized GitHub connector works; implementation and native build verification will use standard GitHub Actions runners where necessary, without Remote Desktop Commander.
-
-The existing dependency snapshot has been recovered and its four parts verified by SHA-256. Its SDK matrix must still pass real compilation; extraction is not app verification.
-
-Next work: restore a reproducible monorepo, implement shared contracts/persistence and a native Home vertical, then complete product modules and execute native functional/visual loops. Source, evidence, and checkpoints will be published before session termination. Do not claim completion until the actual final criteria have passed.
+Próximo: completar publicación de los fuentes, reconstruir y verificar lockfile, ejecutar builds reales, E2E y comparación visual; terminar backend/worker/admin y adapters pendientes. No se ha activado un servicio de producción, compra o canje real. La Home canónica no se rediseña.

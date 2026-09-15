@@ -1,43 +1,19 @@
-# Credentials and local configuration
+node_modules
 .env
 .env.*
 !.env.example
-!.env.sample
-*.pem
-*.key
-*.p12
-*.p8
-*.jks
-*.keystore
-*.mobileprovision
-.npmrc
-credentials.json
-service-account*.json
-
-# Dependencies, caches and generated builds
-node_modules/
 .expo/
-.expo-shared/
 dist/
-build/
-coverage/
-__pycache__/
-*.pyc
-*.tsbuildinfo
-*.apk
-*.aab
-*.ipa
-*.xcarchive/
-
-# User/device data
+apps/mobile/android/
+apps/mobile/ios/
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
 *.db
-*.db-*
-*.sqlite
-*.sqlite-*
-*.sqlite3
+*.db-shm
+*.db-wal
+coverage/
 .DS_Store
-Thumbs.db
-
-# Temporary logs (historical verification log is intentional)
-*.log
-!artifacts/verify-final.log
+private-references/
+artifacts/native/**/*.app/
