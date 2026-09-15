@@ -1,0 +1,29 @@
+name: CUKI verified source edits
+on:
+  push:
+    branches: [implementation/cuki-verified]
+    paths: ['.delivery/text-edits/*.json']
+permissions:
+  contents: write
+concurrency:
+  group: cuki-source-edits
+  cancel-in-progress: false
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate input and output before replacing any source
+        run: |
+          for patch in .delivery/text-edits/*.json; do
+            test -f "$patch" || continue
+            python3 scripts/apply-text-edits.py "$patch"
+          done
+      - name: Persist applied source, without claiming app verification
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet || git commit -m 'fix: preserve checked local state and synchronization corrections [skip ci]'
+          git push origin HEAD:implementation/cuki-verified
