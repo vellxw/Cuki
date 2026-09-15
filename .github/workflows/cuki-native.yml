@@ -21,42 +21,55 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Import verified source snapshot when supplied
+      - name: Import checksum-verified source checkpoint
         id: source
         shell: bash
         run: |
           set -euo pipefail
           if [ -f .delivery/ready.json ]; then
             python3 - <<'PY'
-          import hashlib, json, pathlib, tarfile
+          import hashlib, json, pathlib, tarfile, urllib.request, urllib.parse
           root = pathlib.Path('.').resolve()
           meta = json.loads(pathlib.Path('.delivery/ready.json').read_text())
-          archive = pathlib.Path('.delivery/snapshot.tgz')
+          archive = pathlib.Path('/tmp/cuki-import.tgz')
+          if 'source_url' in meta:
+            url = urllib.parse.urlparse(meta['source_url'])
+            assert url.scheme == 'https' and url.hostname.endswith('.oaiusercontent.com'), 'Unapproved transfer host'
+            with urllib.request.urlopen(meta['source_url'], timeout=90) as response:
+              data = response.read(30_000_001)
+            assert len(data) <= 30_000_000, 'Checkpoint too large'
+            archive.write_bytes(data)
+          else:
+            archive = pathlib.Path('.delivery/snapshot.tgz')
           assert hashlib.sha256(archive.read_bytes()).hexdigest() == meta['sha256'], 'Snapshot checksum mismatch'
           allowed = {'apps','packages','modules','infra','scripts','docs','tests','e2e','artifacts','assets','config'}
           rootfiles = {'package.json','package-lock.json','tsconfig.json','jest.config.cjs','babel.config.cjs','.gitignore','.gitattributes','.nvmrc','.npmrc','.env.example','README.md','PROJECT_STATE.md','AGENTS.md','scope-matrix.json','reference-manifest.json','visual-contract.json','verification-report.json','LICENSE','NOTICE','docker-compose.yml'}
+          def valid(p):
+            return not p.is_absolute() and '..' not in p.parts and (p.parts[0] in allowed or str(p) in rootfiles) and not any(x in {'node_modules','.git','.env','credentials','secrets'} for x in p.parts)
           with tarfile.open(archive) as tf:
             members = tf.getmembers()
             for member in members:
               p = pathlib.PurePosixPath(member.name)
-              assert not p.is_absolute() and '..' not in p.parts and member.isfile(), member.name
-              assert p.parts[0] in allowed or str(p) in rootfiles, member.name
-              assert not any(x in {'node_modules','.git','.env','credentials','secrets'} for x in p.parts), member.name
-              assert member.size < 20_000_000, member.name
+              assert valid(p) and member.isfile() and member.size < 20_000_000, member.name
             for member in members:
               dest = root / member.name
               dest.parent.mkdir(parents=True, exist_ok=True)
               dest.write_bytes(tf.extractfile(member).read())
+          for name in meta.get('delete', []):
+            p = pathlib.PurePosixPath(name)
+            assert valid(p), name
+            (root / name).unlink(missing_ok=True)
+          archive.unlink(missing_ok=True)
           PY
-            git rm -f .delivery/ready.json .delivery/snapshot.tgz
-            git add apps packages modules infra scripts docs tests e2e artifacts assets config package.json package-lock.json tsconfig.json jest.config.cjs babel.config.cjs .gitignore .gitattributes .nvmrc .npmrc .env.example README.md PROJECT_STATE.md AGENTS.md scope-matrix.json reference-manifest.json visual-contract.json verification-report.json LICENSE NOTICE docker-compose.yml 2>/dev/null || git add -A
+            git rm -f --ignore-unmatch .delivery/ready.json .delivery/snapshot.tgz
+            git add -A
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -m 'feat: preserve complete verified CUKI source checkpoint'
+            git commit -m 'feat: preserve complete CUKI source checkpoint (work in progress)'
             git push origin HEAD:${GITHUB_REF_NAME}
           fi
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          if [ -f package.json ] && [ -f apps/mobile/app.config.ts ]; then echo 'build=true' >> "$GITHUB_OUTPUT"; else echo 'build=false' >> "$GITHUB_OUTPUT"; fi
+          if [ -f scripts/verify.mjs ] && [ -f apps/mobile/app.config.ts ]; then echo 'build=true' >> "$GITHUB_OUTPUT"; else echo 'build=false' >> "$GITHUB_OUTPUT"; fi
           mkdir -p /tmp/cuki-checkpoint
           git bundle create /tmp/cuki-checkpoint/Cuki.bundle --all
           git archive --format=zip --output=/tmp/cuki-checkpoint/Cuki-source.zip HEAD
