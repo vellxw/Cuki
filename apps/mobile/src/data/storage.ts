@@ -1,0 +1,4 @@
+import * as SQLite from 'expo-sqlite';import type {SQLConnection,SQLDriver,SqlValue} from '../../../../packages/core/repository';
+let driverPromise:Promise<SQLDriver>|null=null;
+function connection(db:SQLite.SQLiteDatabase):SQLConnection{return{async exec(sql,params=[]){if(params.length)await db.runAsync(sql,params);else await db.execAsync(sql)},async all<T>(sql:string,params:SqlValue[]=[]){return await db.getAllAsync<T>(sql,params)}}}
+export function getDriver(){return driverPromise??=(async()=>{const db=await SQLite.openDatabaseAsync('cuki-v1.sqlite');await db.execAsync('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');const base=connection(db);return{...base,async transaction<T>(fn:(tx:SQLConnection)=>Promise<T>):Promise<T>{let value:T;await db.withExclusiveTransactionAsync(async tx=>{value=await fn(connection(tx))});return value!}}})()}
