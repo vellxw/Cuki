@@ -1,0 +1,181 @@
+name: CUKI native verification
+on:
+  workflow_dispatch:
+  push:
+    branches: [implementation/cuki-v2-native]
+    paths: ['.delivery/ready.json', '.github/workflows/cuki-native.yml', 'ci-trigger.json']
+permissions:
+  contents: read
+concurrency:
+  group: cuki-native-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      build: ${{ steps.source.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Import verified source snapshot when supplied
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f .delivery/ready.json ]; then
+            python3 - <<'PY'
+          import hashlib, json, pathlib, tarfile
+          root = pathlib.Path('.').resolve()
+          meta = json.loads(pathlib.Path('.delivery/ready.json').read_text())
+          archive = pathlib.Path('.delivery/snapshot.tgz')
+          assert hashlib.sha256(archive.read_bytes()).hexdigest() == meta['sha256'], 'Snapshot checksum mismatch'
+          allowed = {'apps','packages','modules','infra','scripts','docs','tests','e2e','artifacts','assets','config'}
+          rootfiles = {'package.json','package-lock.json','tsconfig.json','jest.config.cjs','babel.config.cjs','.gitignore','.gitattributes','.nvmrc','.npmrc','.env.example','README.md','PROJECT_STATE.md','AGENTS.md','scope-matrix.json','reference-manifest.json','visual-contract.json','verification-report.json','LICENSE','NOTICE','docker-compose.yml'}
+          with tarfile.open(archive) as tf:
+            members = tf.getmembers()
+            for member in members:
+              p = pathlib.PurePosixPath(member.name)
+              assert not p.is_absolute() and '..' not in p.parts and member.isfile(), member.name
+              assert p.parts[0] in allowed or str(p) in rootfiles, member.name
+              assert not any(x in {'node_modules','.git','.env','credentials','secrets'} for x in p.parts), member.name
+              assert member.size < 20_000_000, member.name
+            for member in members:
+              dest = root / member.name
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              dest.write_bytes(tf.extractfile(member).read())
+          PY
+            git rm -f .delivery/ready.json .delivery/snapshot.tgz
+            git add apps packages modules infra scripts docs tests e2e artifacts assets config package.json package-lock.json tsconfig.json jest.config.cjs babel.config.cjs .gitignore .gitattributes .nvmrc .npmrc .env.example README.md PROJECT_STATE.md AGENTS.md scope-matrix.json reference-manifest.json visual-contract.json verification-report.json LICENSE NOTICE docker-compose.yml 2>/dev/null || git add -A
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'feat: preserve complete verified CUKI source checkpoint'
+            git push origin HEAD:${GITHUB_REF_NAME}
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if [ -f package.json ] && [ -f apps/mobile/app.config.ts ]; then echo 'build=true' >> "$GITHUB_OUTPUT"; else echo 'build=false' >> "$GITHUB_OUTPUT"; fi
+          mkdir -p /tmp/cuki-checkpoint
+          git bundle create /tmp/cuki-checkpoint/Cuki.bundle --all
+          git archive --format=zip --output=/tmp/cuki-checkpoint/Cuki-source.zip HEAD
+          git rev-parse HEAD > /tmp/cuki-checkpoint/COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-source-${{ steps.source.outputs.sha }}
+          path: /tmp/cuki-checkpoint
+          retention-days: 30
+  verify:
+    needs: source
+    if: needs.source.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: cuki_ci_only
+          POSTGRES_DB: cuki
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgres://postgres:cuki_ci_only@localhost:5432/cuki
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cuki-verification-${{ needs.source.outputs.sha }}
+          path: artifacts
+          retention-days: 30
+  android:
+    needs: [source, verify]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_PUBLIC_TEST_MODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: cd apps/mobile && npx expo prebuild --platform android --no-install
+      - run: cd apps/mobile/android && ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon --stacktrace
+      - name: Install checksum-pinned Maestro
+        run: bash scripts/install-maestro.sh
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          script: bash scripts/native-android-test.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cuki-android-${{ needs.source.outputs.sha }}
+          path: |
+            apps/mobile/android/app/build/outputs/apk/release/*.apk
+            artifacts/native/android
+          retention-days: 30
+  ios:
+    needs: [source, verify]
+    runs-on: macos-26
+    timeout-minutes: 80
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_PUBLIC_TEST_MODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: cd apps/mobile && npx expo prebuild --platform ios --no-install && cd ios && pod install
+      - run: bash scripts/native-ios-build.sh
+      - run: bash scripts/install-maestro.sh
+      - run: bash scripts/native-ios-test.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cuki-ios-${{ needs.source.outputs.sha }}
+          path: artifacts/native/ios
+          retention-days: 30
