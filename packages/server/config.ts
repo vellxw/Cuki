@@ -1,0 +1,10 @@
+import { need } from './common';
+export interface Config { env:'local'|'test'|'production'; host:string; port:number; databaseUrl:string; embeddedPath?:string; origin:string; authMode:'local'|'supabase'; authIssuer:string; authKey:string; supabaseUrl:string; supabasePublicKey:string; supabaseSecretKey:string; mediaDir:string; mediaKey:string; aiKey:string; aiModel:string; aiBaseUrl:string; webhookKey:string; revenueCatKey:string; adminIds:string[]; }
+export function configuration(e:Record<string,string|undefined>=process.env):Config {
+ const env=(e.APP_ENV??'local') as Config['env'];need(['local','test','production'].includes(env),'APP_ENV inválido.');
+ const origin=e.PUBLIC_ORIGIN??'http://127.0.0.1:3000';const authMode=(e.AUTH_MODE??(env==='production'?'supabase':'local')) as Config['authMode'];
+ need(['local','supabase'].includes(authMode),'AUTH_MODE inválido.');
+ if(env==='production'){need(authMode==='supabase','Producción exige el proveedor de identidad configurado.');need(origin.startsWith('https://'),'Producción exige HTTPS.');need(e.DATABASE_URL&&!e.EMBEDDED_DB,'Producción exige PostgreSQL externo.');need(e.SUPABASE_URL?.startsWith('https://'),'Configurá Supabase seguro.');}
+ const c:Config={env,host:e.HOST??'127.0.0.1',port:Number(e.PORT??3000),databaseUrl:e.DATABASE_URL??'',embeddedPath:e.EMBEDDED_DB,origin,authMode,authIssuer:e.SUPABASE_JWT_ISSUER??(authMode==='local'?origin+'/auth/v1':(e.SUPABASE_URL??'')+'/auth/v1'),authKey:e.LOCAL_AUTH_SECRET??'',supabaseUrl:e.SUPABASE_URL??'',supabasePublicKey:e.SUPABASE_ANON_KEY??'',supabaseSecretKey:e.SUPABASE_SERVICE_ROLE_KEY??'',mediaDir:e.MEDIA_DIR??'.local/media',mediaKey:e.MEDIA_SIGNING_SECRET??'',aiKey:e.AI_API_KEY??'',aiModel:e.AI_MODEL??'',aiBaseUrl:e.AI_BASE_URL??'https://api.openai.com/v1',webhookKey:e.REVENUECAT_WEBHOOK_AUTH??'',revenueCatKey:e.REVENUECAT_SECRET_KEY??'',adminIds:(e.ADMIN_USER_IDS??'').split(',').filter(Boolean)};
+ need(c.mediaKey.length>=32,'MEDIA_SIGNING_SECRET debe contener al menos 32 caracteres.');if(authMode==='local')need(c.authKey.length>=32,'LOCAL_AUTH_SECRET debe contener al menos 32 caracteres.');return c;
+}
