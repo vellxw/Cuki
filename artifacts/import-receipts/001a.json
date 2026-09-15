@@ -1,0 +1,9 @@
+{
+  "payload_sha256": "177c5ad191968e539fdb6c7c1a63e3f8a1919e19a1f804da0d1c90f3bd7b77da",
+  "transport_corrected": true,
+  "files": {
+    "packages/core/types.ts": "b4dd222f5fe1eb523afde545484c73580c6263e6150d0a2ef3a5e4e7ae960369",
+    "packages/core/package.json": "d44b223204eadde2a3af178999ae4cbed6266756a903c8e74be8e9ee2a407546"
+  },
+  "status": "source preserved; not a build certification"
+}
