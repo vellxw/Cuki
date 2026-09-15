@@ -14,12 +14,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Archive the checked-out source only
+      - name: Archive exact source and immutable inventory
         run: |
           mkdir -p /tmp/cuki-snapshot
           git rev-parse HEAD > /tmp/cuki-snapshot/COMMIT.txt
+          git ls-tree -r HEAD > /tmp/cuki-snapshot/TREE.txt
           git archive --format=zip HEAD > /tmp/cuki-snapshot/source.zip
-          sha256sum /tmp/cuki-snapshot/source.zip > /tmp/cuki-snapshot/SHA256.txt
+          cd /tmp/cuki-snapshot
+          sha256sum source.zip > SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: cuki-exact-source
