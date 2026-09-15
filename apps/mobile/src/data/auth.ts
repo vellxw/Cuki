@@ -1,18 +1,22 @@
-import * as SecureStore from 'expo-secure-store';import Constants from 'expo-constants';import {invariant} from '../../../../packages/core/utils';
-export interface Identity {userId:string;email:string;verified:boolean}
-interface AuthSession {access_token:string;refresh_token:string;expires_at:number;user:{id:string;email?:string;email_confirmed_at?:string}}
-const config=Constants.expoConfig?.extra??{};const endpoint=String(config.authUrl??'');const publicKey=String(config.authKey??'');const storeKey='cuki.auth.v1';
-export const authConfigured=!!endpoint&&!!publicKey;
-let session:AuthSession|null=null;let generation=0;let refreshPromise:Promise<string|null>|null=null;
-export const authEpoch=()=>generation;
-export function identityOf():Identity|null{return session?{userId:session.user.id,email:session.user.email??'',verified:!!session.user.email_confirmed_at}:null}
-export async function restoreSession(){const raw=await SecureStore.getItemAsync(storeKey);if(raw){try{const s=JSON.parse(raw) as AuthSession;invariant(typeof s.access_token==='string'&&typeof s.refresh_token==='string'&&!!s.user?.id,'Sesión guardada no válida.');session=s}catch{await SecureStore.deleteItemAsync(storeKey);session=null}}return identityOf()}
-async function authRequest(path:string,body:unknown,bearer?:string){invariant(authConfigured,'Falta configurar el servicio de cuenta. Podés seguir como invitado.');const res=await fetch(endpoint.replace(/\/$/,'')+'/auth/v1'+path,{method:'POST',headers:{apikey:publicKey,'Content-Type':'application/json',...(bearer?{Authorization:'Bearer '+bearer}:{})},body:JSON.stringify(body),signal:AbortSignal.timeout(25000)});const text=await res.text();const value=text?JSON.parse(text):{};if(!res.ok)throw new Error(value.msg??value.error_description??value.message??'No se pudo autenticar.');return value}
-async function saveSession(value:AuthSession,expected:number){invariant(generation===expected,'La cuenta cambió durante la solicitud.');invariant(value.access_token&&value.refresh_token&&value.user?.id,'La cuenta requiere confirmación por correo.');session={...value,expires_at:value.expires_at??Math.floor(Date.now()/1000)+3600};await SecureStore.setItemAsync(storeKey,JSON.stringify(session),{keychainAccessible:SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY});return identityOf()!}
-export async function signIn(email:string,password:string){const epoch=generation;return saveSession(await authRequest('/token?grant_type=password',{email,password}),epoch)}
-export async function signUp(email:string,password:string){const epoch=generation;const value=await authRequest('/signup',{email,password});if(value.access_token)return saveSession(value,epoch);return null}
-export async function sendOtp(email:string){return authRequest('/otp',{email,create_user:true})}
-export async function verifyOtp(email:string,token:string){const epoch=generation;return saveSession(await authRequest('/verify',{email,token,type:'email'}),epoch)}
-export async function resetPassword(email:string){return authRequest('/recover',{email})}
-export async function accessToken():Promise<string|null>{if(!session)return null;if(session.expires_at*1000>Date.now()+60000)return session.access_token;if(!authConfigured)throw new Error('La sesión necesita renovarse cuando esté disponible el servicio de cuenta.');return refreshPromise??=(async()=>{const epoch=generation;const s=await authRequest('/token?grant_type=refresh_token',{refresh_token:session!.refresh_token});await saveSession(s,epoch);return session!.access_token})().finally(()=>refreshPromise=null)}
-export async function logout(){generation++;const token=session?.access_token;session=null;await SecureStore.deleteItemAsync(storeKey);if(token&&authConfigured)void authRequest('/logout',{},token).catch(()=>{});}
+import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
+import { SessionManager } from '../../../../packages/core/session-manager';
+export type { Identity } from '../../../../packages/core/session-manager';
+const config = Constants.expoConfig?.extra ?? {};
+const storeKey = 'cuki.auth.v1';
+const manager = new SessionManager({
+  read: () => SecureStore.getItemAsync(storeKey),
+  write: value => SecureStore.setItemAsync(storeKey, value, { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY }),
+  remove: () => SecureStore.deleteItemAsync(storeKey),
+}, { endpoint: String(config.authUrl ?? ''), publicKey: String(config.authKey ?? '') });
+export const authConfigured = manager.configured;
+export const authEpoch = manager.epoch;
+export const identityOf = manager.identity;
+export const restoreSession = manager.restore;
+export const signIn = manager.signIn;
+export const signUp = manager.signUp;
+export const sendOtp = manager.sendOtp;
+export const verifyOtp = manager.verifyOtp;
+export const resetPassword = manager.resetPassword;
+export const accessToken = manager.accessToken;
+export const logout = manager.logout;
