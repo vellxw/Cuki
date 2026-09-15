@@ -2,22 +2,65 @@ name: CUKI native binary checks
 on:
   push:
     branches: [implementation/cuki-verified]
-    paths: [.github/workflows/native-build-check.yml, ci/native-request.json]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'migrations/**'
+      - '*config*'
+      - 'package*.json'
+      - '.npmrc'
+      - '.github/workflows/native-build-check.yml'
+      - 'ci/native-request.json'
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: cuki-native-binary-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
+# No API credentials or production data are embedded in this guest-test variant.
+env:
+  CI: '1'
+  EXPO_NO_TELEMETRY: '1'
+  EXPO_PUBLIC_TEST_MODE: '1'
+  NODE_OPTIONS: --max-old-space-size=4096
 jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Verify source, nonempty tests and both production JS bundles
+        run: npm run verify -- --bundles
+      - name: Preserve immutable source and dependency/build provenance
+        if: always()
+        run: |
+          mkdir -p artifacts/source
+          git rev-parse HEAD > artifacts/source/COMMIT.txt
+          git ls-tree -r HEAD > artifacts/source/TREE.txt
+          git archive --format=zip HEAD > artifacts/source/CUKI-source.zip
+          cd artifacts/source && sha256sum CUKI-source.zip > SHA256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cuki-preflight-${{ github.sha }}
+          path: |
+            artifacts/verification
+            artifacts/source
+          retention-days: 30
+          if-no-files-found: error
   android:
+    needs: preflight
     runs-on: ubuntu-24.04
     timeout-minutes: 70
-    env:
-      CI: '1'
-      EXPO_NO_TELEMETRY: '1'
-      EXPO_PUBLIC_TEST_MODE: '1'
-      NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,14 +73,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
       - run: npm ci --no-audit --no-fund
-      - run: npm run typecheck
-      - run: npm test
       - run: cd apps/mobile && npx --no-install expo prebuild --platform android --no-install
-      - name: Compile an independently launchable Android test binary
+      - name: Compile standalone test APK for emulator and arm64 phones
         run: |
+          mkdir -p artifacts/native/android
+          set -o pipefail
           cd apps/mobile/android
-          ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64,arm64-v8a --no-daemon --max-workers=2 --stacktrace
+          ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64,arm64-v8a --no-daemon --max-workers=2 --stacktrace 2>&1 | tee ../../../artifacts/native/android/build.log
       - name: Enable KVM for ephemeral emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -60,12 +104,9 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
   ios:
+    needs: preflight
     runs-on: macos-26
     timeout-minutes: 80
-    env:
-      CI: '1'
-      EXPO_NO_TELEMETRY: '1'
-      EXPO_PUBLIC_TEST_MODE: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,27 +118,33 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: cd apps/mobile && npx --no-install expo prebuild --platform ios --no-install
       - run: cd apps/mobile/ios && pod install
-      - name: Compile simulator application, without distribution signing
-        run: |
-          cd apps/mobile/ios
-          workspace=$(find . -maxdepth 1 -name '*.xcworkspace' -print -quit)
-          scheme=$(xcodebuild -list -json -workspace "$workspace" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["workspace"]["schemes"][0])')
-          xcodebuild -workspace "$workspace" -scheme "$scheme" -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
-      - name: Launch in native iOS simulator and capture Home
+      - name: Compile CUKITest simulator app, without distribution signing
         run: |
           mkdir -p artifacts/native/ios
+          set -o pipefail
+          cd apps/mobile/ios
+          test -d CUKITest.xcworkspace
+          xcodebuild -list -json -workspace CUKITest.xcworkspace > ../../../artifacts/native/ios/schemes.json
+          python3 -c 'import json; d=json.load(open("../../../artifacts/native/ios/schemes.json")); assert "CUKITest" in d["workspace"]["schemes"]'
+          xcodebuild -workspace CUKITest.xcworkspace -scheme CUKITest -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | tee ../../../artifacts/native/ios/build.log
+      - name: Install and launch real simulator application
+        run: |
           udid=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for xs in d["devices"].values() for x in xs if x.get("isAvailable") and "iPhone" in x["name"]))')
           xcrun simctl boot "$udid"
           xcrun simctl bootstatus "$udid" -b
-          app=$(find apps/mobile/ios/build/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' -print -quit)
+          app=apps/mobile/ios/build/Build/Products/Release-iphonesimulator/CUKITest.app
+          test -d "$app"
           xcrun simctl install "$udid" "$app"
-          xcrun simctl launch "$udid" com.cuki.app.test
-          sleep 12
+          xcrun simctl launch "$udid" com.cuki.app.test | tee artifacts/native/ios/launch.txt
+          sleep 15
+          xcrun simctl io "$udid" screenshot artifacts/native/ios/welcome.png
           xcrun simctl openurl "$udid" 'cuki://home'
           sleep 8
           xcrun simctl io "$udid" screenshot artifacts/native/ios/home.png
+          xcrun simctl spawn "$udid" log show --last 3m --style compact --predicate 'process == "CUKITest"' > artifacts/native/ios/runtime.log
           xcrun simctl list devices -j > artifacts/native/ios/devices.json
           ditto -c -k --sequesterRsrc --keepParent "$app" artifacts/native/ios/CUKI-simulator.app.zip
+          shasum -a 256 artifacts/native/ios/CUKI-simulator.app.zip > artifacts/native/ios/SHA256.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
