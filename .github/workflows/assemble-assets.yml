@@ -1,0 +1,29 @@
+name: CUKI owned image asset verification
+on:
+  push:
+    branches: [implementation/cuki-verified]
+    paths: ['.delivery/assets/*.json']
+permissions:
+  contents: write
+concurrency:
+  group: cuki-asset-assembly
+  cancel-in-progress: false
+jobs:
+  assemble:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore original image bytes only after checksum verification
+        run: |
+          for manifest in .delivery/assets/*.json; do
+            test -f "$manifest" || continue
+            python3 scripts/assemble-assets.py "$manifest"
+          done
+      - name: Preserve verified assets
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet || git commit -m 'assets: preserve checked original artwork without recompression [skip ci]'
+          git push origin HEAD:implementation/cuki-verified
