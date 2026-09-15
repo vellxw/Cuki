@@ -1,0 +1,31 @@
+name: CUKI runtime support
+on:
+  push:
+    branches: [feat/cuki-native-integrated]
+    paths: [.github/workflows/runtime-support.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Resolve isolated verification dependencies
+        run: |
+          mkdir support && cd support
+          npm init -y
+          npm install --ignore-scripts --save-exact @electric-sql/pglite@latest react-dom@19.2.3
+          node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json'));fs.writeFileSync('versions.json',JSON.stringify({node:process.version,dependencies:p.dependencies},null,2))"
+          tar -czf runtime-support.tar.gz node_modules package.json package-lock.json versions.json
+          sha256sum runtime-support.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-runtime-support
+          path: |
+            support/runtime-support.tar.gz
+            support/SHA256SUMS
+          retention-days: 14
