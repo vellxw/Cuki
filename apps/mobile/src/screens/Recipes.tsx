@@ -102,7 +102,7 @@ export function RecipesHome() {
   const nav = useNav();
   const [f, setF] = useState('all');
   const recipes = state.recipes.filter(r => !state.blockedIds.includes(r.authorId)).filter(r => f === 'quick' ? r.minutes <= 20 : f === 'saved' ? state.savedRecipeIds.includes(r.id) : true);
-  return <Screen back={false} dock={false} background testID="SC-23"><Title>Recetas</Title><Txt tone="secondary">Cociná. Compartí. Inspirá.</Txt><Button title="Buscar recetas e ingredientes" icon="search" variant="secondary" onPress={() => nav.go('SC-24')} /><Chips options={[{
+  return <Screen back={false} dock={false} tab="recipes" background testID="SC-23"><Title>Recetas</Title><Txt tone="secondary">Cociná. Compartí. Inspirá.</Txt><Button title="Buscar recetas e ingredientes" icon="search" variant="secondary" onPress={() => nav.go('SC-24')} /><Chips options={[{
       value: 'all',
       label: 'Para descubrir'
     }, {

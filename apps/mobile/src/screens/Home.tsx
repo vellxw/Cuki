@@ -30,7 +30,7 @@ export function Home({
   const active = state.sessions.find(s => s.status === 'active' || s.status === 'paused');
   const plan = state.plans[0];
   const collapsed = width < 370 || fontScale > 1.3;
-  return <Screen back={false} dock={false} background testID="SC-07"><View style={[layout.between, {
+  return <Screen back={false} dock={false} tab="home" background testID="SC-07"><View style={[layout.between, {
       paddingTop: 18,
       alignItems: 'flex-start'
     }]}><View style={{
@@ -92,9 +92,7 @@ export function Home({
         planId: plan.id
       }) : nav.go('SC-44')} style={{
         alignSelf: 'flex-start'
-      }} /></View><View style={layout.wrap}><Button title="Diario" variant="quiet" onPress={() => nav.go('SC-08')} /><Button title="Mi semana" variant="quiet" onPress={() => nav.go('SC-36')} /></View><View style={{
-      height: 100
-    }} /></Screen>;
+      }} /></View><View style={layout.wrap}><Button title="Diario" variant="quiet" onPress={() => nav.go('SC-08')} /><Button title="Mi semana" variant="quiet" onPress={() => nav.go('SC-36')} /></View></Screen>;
 }
 export function Diary() {
   const {

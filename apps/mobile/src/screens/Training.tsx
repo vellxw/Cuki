@@ -65,7 +65,7 @@ export function TrainingHome({
       id: session.id
     });
   });
-  return <Screen back={false} dock={false} title="Entrenar" subtitle="Un registro a la vez. Tus series quedan guardadas antes de avanzar." background testID="SC-42">{active && <Card><Txt size={23} weight="600">{active.name}</Txt><Txt tone="secondary">{statusLabel[active.status]}</Txt><Button title="Reanudar sesión" icon="play" onPress={() => nav.go(active.restDeadline ? 'SC-48' : 'SC-47', {
+  return <Screen back={false} dock={false} tab="train" title="Entrenar" subtitle="Un registro a la vez. Tus series quedan guardadas antes de avanzar." background testID="SC-42">{active && <Card><Txt size={23} weight="600">{active.name}</Txt><Txt tone="secondary">{statusLabel[active.status]}</Txt><Button title="Reanudar sesión" icon="play" onPress={() => nav.go(active.restDeadline ? 'SC-48' : 'SC-47', {
         id: active.id
       })} /></Card>}{chosen ? <Section title={chosen.name} action="Editar" onAction={() => nav.go('SC-44', {
       id: chosen.id
