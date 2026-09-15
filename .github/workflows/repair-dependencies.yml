@@ -1,0 +1,58 @@
+name: CUKI reproducible dependency repair
+on:
+  push:
+    branches: [implementation/cuki-verified]
+    paths: [.github/workflows/repair-dependencies.yml]
+permissions:
+  contents: write
+concurrency:
+  group: cuki-dependency-repair
+  cancel-in-progress: false
+jobs:
+  dependencies:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin React DOM to the native React version, rather than ignoring peer dependencies
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          for(const path of ['package.json','apps/mobile/package.json']){
+            const p=JSON.parse(fs.readFileSync(path,'utf8'));
+            p.dependencies['react-dom']='19.2.3';
+            p.dependencies['@react-three/fiber']='9.7.0';
+            if(path==='package.json')p.dependencies['@electric-sql/pglite']='0.5.8';
+            fs.writeFileSync(path,JSON.stringify(p,null,2)+'\n');
+          }
+          JS
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --no-audit --no-fund
+      - name: Record and preserve reproducible installation
+        run: |
+          mkdir -p artifacts/dependencies
+          node --version > artifacts/dependencies/node.txt
+          npm ls react react-dom react-native expo @react-three/fiber --json > artifacts/dependencies/native-matrix.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json apps/mobile/package.json package-lock.json artifacts/dependencies
+          git diff --cached --quiet || git commit -m 'fix: pin compatible React DOM and validate clean dependency installation [skip ci]'
+          git push origin HEAD:implementation/cuki-verified
+      - name: Archive exact source, not node_modules
+        if: always()
+        run: |
+          mkdir -p /tmp/cuki-repair
+          git archive --format=zip HEAD > /tmp/cuki-repair/source.zip
+          git rev-parse HEAD > /tmp/cuki-repair/COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cuki-dependency-repair
+          path: /tmp/cuki-repair
+          retention-days: 30
+          if-no-files-found: error
