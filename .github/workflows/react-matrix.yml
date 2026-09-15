@@ -1,0 +1,32 @@
+name: CUKI React matrix
+on:
+  push:
+    branches: [implementation/cuki-verified]
+    paths: [.github/workflows/react-matrix.yml]
+permissions:
+  contents: read
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Fetch exact compatible React versions
+        run: |
+          mkdir pair
+          cd pair
+          printf '%s\n' '{"name":"cuki-react-matrix","version":"1.0.0","private":true,"dependencies":{"react":"19.2.3","react-dom":"19.2.3"}}' > package.json
+          npm install --ignore-scripts --no-audit --no-fund
+          node -e "const fs=require('fs');if(require('./node_modules/react/package.json').version!=='19.2.3'||require('./node_modules/react-dom/package.json').version!=='19.2.3')process.exit(1)"
+          tar -czf ../react-matrix.tar.gz node_modules package.json package-lock.json
+          cd ..
+          sha256sum react-matrix.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-react-matrix
+          path: |
+            react-matrix.tar.gz
+            SHA256SUMS
+          retention-days: 7
