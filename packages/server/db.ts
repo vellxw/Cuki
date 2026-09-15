@@ -27,7 +27,7 @@ export async function asActor<T>(db: Database, actor: Actor, run: (tx: SQL) => P
 }
 export async function migrate(db: Database, base = new URL('../../migrations/', import.meta.url)) {
   await db.query('CREATE TABLE IF NOT EXISTS cuki_migrations (version int PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
-  for (const name of ['001_core.sql']) {
+  for (const name of ['001_core.sql','002_jobs.sql']) {
     const version = Number(name.slice(0,3));
     const sql = await readFile(new URL(name, base), 'utf8');
     await db.transaction(async tx => {
