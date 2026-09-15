@@ -77,17 +77,19 @@
   },
   "scripts": {
     "mobile": "npm run start -w @cuki/mobile",
-    "api": "tsx apps/api/src/index.ts",
-    "worker": "tsx apps/worker/src/index.ts",
-    "migrate": "tsx scripts/migrate.ts",
-    "seed": "tsx scripts/seed.ts",
+    "api": "node --env-file-if-exists=.env --import tsx apps/api/src/index.ts",
+    "worker": "node --env-file-if-exists=.env --import tsx apps/worker/src/index.ts",
+    "migrate": "node --env-file-if-exists=.env --import tsx scripts/migrate.ts",
+    "seed": "node --env-file-if-exists=.env --import tsx scripts/seed.ts",
     "typecheck": "tsc --noEmit",
     "test:core": "tsx --test tests/core/*.test.ts",
     "test:integration": "tsx --test tests/integration/*.test.ts",
-    "test:mobile": "jest --runInBand",
+    "test:mobile": "jest --runInBand --config jest.config.cjs",
     "verify": "node scripts/verify.mjs",
-    "admin": "tsx apps/api/src/index.ts",
+    "admin": "node --env-file-if-exists=.env --import tsx apps/api/src/index.ts",
     "export:android": "npm run export:android -w @cuki/mobile",
-    "export:ios": "npm run export:ios -w @cuki/mobile"
+    "export:ios": "npm run export:ios -w @cuki/mobile",
+    "test": "npm run test:core && npm run test:integration",
+    "setup:local": "node scripts/bootstrap.mjs"
   }
 }

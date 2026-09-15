@@ -3,13 +3,34 @@ export class ApiError extends Error {constructor(message:string,readonly status:
 export class ApiClient {
  readonly configured:boolean;
  constructor(readonly baseUrl:string,private token:()=>Promise<string|null>,private epoch:()=>number=()=>0){this.configured=!!baseUrl;invariant(!baseUrl||/^https?:\/\//.test(baseUrl),'La URL de API no es válida.')}
- async request<T>(path:string,method='GET',body?:unknown,key?:string,signal?:AbortSignal):Promise<T>{invariant(this.configured,'El servidor no está configurado. Las funciones manuales siguen disponibles.');invariant(path.startsWith('/')&&!path.startsWith('//'),'Ruta inválida.');const epoch=this.epoch();const token=await this.token();const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),25000);const cancel=()=>controller.abort();signal?.addEventListener('abort',cancel,{once:true});try{const res=await fetch(this.baseUrl.replace(/\/$/,'')+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(key?{'Idempotency-Key':key}:{})},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:controller.signal});let value:unknown;try{value=await res.json()}catch{throw new ApiError('Respuesta del servidor no válida.',res.status)}invariant(epoch===this.epoch(),'La cuenta cambió; se descartó la respuesta anterior.');if(!res.ok){const error=value as {message?:string;error?:string};throw new ApiError(error.message??error.error??'No se pudo completar la operación.',res.status,value)}return value as T}finally{clearTimeout(timer);signal?.removeEventListener('abort',cancel)}}
+ async request<T>(path:string,method='GET',body?:unknown,key?:string,signal?:AbortSignal):Promise<T>{invariant(this.configured,'El servidor no está configurado. Las funciones manuales siguen disponibles.');invariant(path.startsWith('/')&&!path.startsWith('//'),'Ruta inválida.');const epoch=this.epoch();const token=await this.token();const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),25000);const cancel=()=>controller.abort();signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)controller.abort();try{const res=await fetch(this.baseUrl.replace(/\/$/,'')+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(key?{'Idempotency-Key':key}:{})},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:controller.signal});let value:unknown;try{value=await res.json()}catch{throw new ApiError('Respuesta del servidor no válida.',res.status)}invariant(epoch===this.epoch(),'La cuenta cambió; se descartó la respuesta anterior.');if(!res.ok){const error=value as {message?:string;error?:string};throw new ApiError(error.message??error.error??'No se pudo completar la operación.',res.status,value)}return value as T}finally{clearTimeout(timer);signal?.removeEventListener('abort',cancel)}}
 }
 export class SyncService {
  private running:Promise<void>|null=null;
  constructor(readonly api:ApiClient,readonly repo:ClientRepo){}
  sync():Promise<void>{if(this.running)return this.running;this.running=this.perform().finally(()=>this.running=null);return this.running}
- private async perform(){invariant(this.repo.accountId!=='guest','Iniciá sesión para sincronizar.');let remaining=true;while(remaining){const batch=this.repo.getSnapshot().outbox.filter(o=>o.state==='pending').slice(0,50);if(!batch.length)break;const result=await this.api.request<{results:{id:string;state:'accepted'|'conflict'|'failed';message?:string;remote?:unknown}[]}>('/v1/sync/push','POST',{operations:batch});await this.repo.acceptSync(result.results,[],this.repo.getSnapshot().cursor??'0');remaining=batch.length===50}for(let i=0;i<100;i++){const cursor=this.repo.getSnapshot().cursor??'0';const result=await this.api.request<{changes:SyncChange[];cursor:string;more:boolean}>('/v1/sync/pull?cursor='+encodeURIComponent(cursor));await this.repo.acceptSync([],result.changes,result.cursor);if(!result.more)break}}
+ private async perform(){
+  invariant(this.repo.accountId!=='guest','Iniciá sesión para sincronizar.');
+  while(true){
+   const batch=this.repo.getSnapshot().outbox.filter(o=>o.state==='pending').slice(0,50);
+   if(!batch.length)break;
+   const result=await this.api.request<{results:{id:string;state:'accepted'|'conflict'|'failed';message?:string;remote?:unknown}[]}>('/v1/sync/push','POST',{operations:batch});
+   invariant(Array.isArray(result.results),'El servidor no confirmó el lote. Se conserva para reintentar.');
+   const sent=new Set(batch.map(o=>o.id));const received=new Set<string>();
+   for(const r of result.results){invariant(sent.has(r.id)&&!received.has(r.id)&&['accepted','conflict','failed'].includes(r.state),'Respuesta de sincronización inconsistente.');received.add(r.id);}
+   invariant(received.size===sent.size,'El servidor no confirmó todos los registros. Se conserva el lote para reintentar.');
+   await this.repo.acceptSync(result.results,[],this.repo.getSnapshot().cursor??'0');
+  }
+  for(let i=0;i<100;i++){
+   const cursor=this.repo.getSnapshot().cursor??'0';
+   const result=await this.api.request<{changes:SyncChange[];cursor:string;more:boolean}>('/v1/sync/pull?cursor='+encodeURIComponent(cursor));
+   invariant(Array.isArray(result.changes)&&/^\d+$/.test(result.cursor)&&typeof result.more==='boolean','Respuesta de sincronización inválida.');
+   invariant(BigInt(result.cursor)>=BigInt(cursor)&&(!result.more||BigInt(result.cursor)>BigInt(cursor)),'El servidor no avanzó el cursor.');
+   await this.repo.acceptSync([],result.changes,result.cursor);
+   if(!result.more)return;
+  }
+  throw new Error('Se guardó el avance de sincronización. Volvé a sincronizar para continuar el historial.');
+ }
 }
 export function quoteCanConfirm(q:RewardQuote,now=Date.now()){return q.eligible&&q.route!==null&&q.benefit_start_at!==null&&q.benefit_end_at!==null&&Date.parse(q.expires_at)>now&&Date.parse(q.benefit_end_at)>Date.parse(q.benefit_start_at)&&!!q.terms_hash}
 export class CloudService {
