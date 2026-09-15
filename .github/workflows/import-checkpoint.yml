@@ -2,7 +2,7 @@ name: CUKI source checkpoint
 on:
   push:
     branches: [feat/cuki-native-integrated]
-    paths: ['.github/imports/**']
+    paths: ['.github/imports/**', '.github/scripts/import-checkpoint.py']
   workflow_dispatch:
 permissions:
   contents: write
@@ -19,36 +19,8 @@ jobs:
         with:
           ref: feat/cuki-native-integrated
           fetch-depth: 0
-      - name: Validate and materialize source payloads
-        run: |
-          python3 - <<'PY'
-          import base64, gzip, hashlib, io, json, pathlib, subprocess, tarfile
-          root=pathlib.Path('.').resolve()
-          receipts=root/'artifacts/import-receipts'; receipts.mkdir(parents=True,exist_ok=True)
-          for f in sorted((root/'.github/imports').glob('*.json')):
-            receipt=receipts/(f.stem+'.json')
-            if receipt.exists(): continue
-            p=json.loads(f.read_text()); raw=base64.b64decode(p['gzip_base64'],validate=True)
-            assert hashlib.sha256(raw).hexdigest()==p['sha256']
-            assert len(raw)<20000000
-            data=gzip.decompress(raw); assert len(data)<100000000
-            with tarfile.open(fileobj=io.BytesIO(data),mode='r:') as tar:
-              entries=tar.getmembers()
-              for m in entries:
-                path=pathlib.PurePosixPath(m.name)
-                assert m.isfile() and not path.is_absolute() and '..' not in path.parts
-                assert path.parts[0] not in ('.git','.github','node_modules')
-                assert not any(part in ('node_modules','.env','private') for part in path.parts)
-                assert not (path.name.startswith('.env') and path.name!='.env.example')
-                assert not m.name.endswith(('.pem','.key','.keystore','.p12'))
-                assert m.size<20000000 and (root/m.name).resolve().is_relative_to(root)
-              for m in entries:
-                dest=root/m.name;dest.parent.mkdir(parents=True,exist_ok=True)
-                content=tar.extractfile(m).read();dest.write_bytes(content)
-                subprocess.run(['git','add','-f','--',m.name],check=True)
-            receipt.write_text(json.dumps({'payload_sha256':p['sha256'],'files':len(entries),'status':'source preserved; not a build certification'},indent=2))
-            subprocess.run(['git','add','--',str(receipt.relative_to(root))],check=True)
-          PY
+      - name: Validate and materialize exact source bytes
+        run: python3 .github/scripts/import-checkpoint.py
       - name: Commit checkpoint without replacing history
         run: |
           git config user.name 'CUKI checkpoint bot'
