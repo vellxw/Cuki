@@ -22,7 +22,7 @@ jobs:
       - name: Validate and materialize source payloads
         run: |
           python3 - <<'PY'
-          import base64, gzip, hashlib, io, json, pathlib, tarfile
+          import base64, gzip, hashlib, io, json, pathlib, subprocess, tarfile
           root=pathlib.Path('.').resolve()
           receipts=root/'artifacts/import-receipts'; receipts.mkdir(parents=True,exist_ok=True)
           for f in sorted((root/'.github/imports').glob('*.json')):
@@ -39,20 +39,25 @@ jobs:
                 assert m.isfile() and not path.is_absolute() and '..' not in path.parts
                 assert path.parts[0] not in ('.git','.github','node_modules')
                 assert not any(part in ('node_modules','.env','private') for part in path.parts)
+                assert not (path.name.startswith('.env') and path.name!='.env.example')
                 assert not m.name.endswith(('.pem','.key','.keystore','.p12'))
-                assert m.size<20000000
+                assert m.size<20000000 and (root/m.name).resolve().is_relative_to(root)
               for m in entries:
                 dest=root/m.name;dest.parent.mkdir(parents=True,exist_ok=True)
                 content=tar.extractfile(m).read();dest.write_bytes(content)
+                subprocess.run(['git','add','-f','--',m.name],check=True)
             receipt.write_text(json.dumps({'payload_sha256':p['sha256'],'files':len(entries),'status':'source preserved; not a build certification'},indent=2))
+            subprocess.run(['git','add','--',str(receipt.relative_to(root))],check=True)
           PY
       - name: Commit checkpoint without replacing history
         run: |
           git config user.name 'CUKI checkpoint bot'
           git config user.email '102954609+vellxw@users.noreply.github.com'
-          git add apps packages scripts infra docs spec tests artifacts PROJECT_STATE.md README.md package.json package-lock.json tsconfig.json .nvmrc .npmrc .gitignore 2>/dev/null || git add -u
-          git add artifacts/import-receipts
-          if ! git diff --cached --quiet; then git commit -m 'wip: preserve integrated source checkpoint'; git push origin HEAD:feat/cuki-native-integrated; fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'wip: preserve integrated source checkpoint'
+            git pull --rebase origin feat/cuki-native-integrated
+            git push origin HEAD:feat/cuki-native-integrated
+          fi
       - name: Back up complete tracked snapshot
         run: |
           git archive --format=zip --output=CUKI_Source_Checkpoint.zip HEAD
