@@ -22,47 +22,13 @@ def run(*args, timeout=120):
     return subprocess.check_output(args, text=True, timeout=timeout)
 
 
-def attachment_records(value):
-    """Tolerate Xcode manifest nesting without inferring screenshots by their order."""
-    if isinstance(value, dict):
-        if 'suggestedHumanReadableName' in value and 'exportedFileName' in value:
-            yield value
-        for item in value.values():
-            yield from attachment_records(item)
-    elif isinstance(value, list):
-        for item in value:
-            yield from attachment_records(item)
-
+# The helper also permits verifying preserved native attachments on Linux.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from capture_evidence import verify_capture as _verify_capture
 
 def verify_capture(summary, attachments, out=OUT):
-    if (summary.get('result') != 'Passed' or summary.get('failedTests', 0) != 0
-            or summary.get('skippedTests', 0) != 0 or summary.get('passedTests') != 6):
-        raise AssertionError('All six non-skipped native visual XCTest methods must pass')
-    manifest = json.loads((attachments / 'manifest.json').read_text())
-    records = list(attachment_records(manifest))
-    captures = []
-    for index, scene in enumerate(SCENES, 1):
-        prefix = f'{index:02d}-{scene}'
-        files = []
-        for sample in (1, 2):
-            name = f'{prefix}-{sample}'
-            matches = [r for r in records if str(r['suggestedHumanReadableName']).split('.')[0] == name]
-            if len(matches) != 1:
-                raise AssertionError(f'Expected one named framebuffer {name}, found {len(matches)}')
-            src = attachments / matches[0]['exportedFileName']
-            data = src.read_bytes()
-            if not data.startswith(b'\x89PNG\r\n\x1a\n'):
-                raise AssertionError(f'{name} is not a PNG framebuffer')
-            dest = out / f'{name}.png'
-            dest.write_bytes(data)  # Exact exported bytes, never altered pixels.
-            files.append({'path': dest.name, 'sha256': hashlib.sha256(data).hexdigest()})
-        captures.append({'scene': scene, 'framebuffers': files,
-                         'nativeSceneAsserted': True, 'unobscuredByAlerts': True,
-                         'inspection': 'pending comparison with the private canon'})
-    # Repeated screenshots of an unchanged launch dialog must not be six scenes.
-    if len({c['framebuffers'][0]['sha256'] for c in captures}) != 6:
-        raise AssertionError('Distinct scenes produced identical framebuffers')
-    return captures
+    return _verify_capture(summary, attachments, out)
 
 
 def main():

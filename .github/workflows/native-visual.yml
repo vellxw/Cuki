@@ -12,6 +12,7 @@ concurrency:
 env:
   CI: '1'
   EXPO_NO_TELEMETRY: '1'
+  CUKI_EMULATOR_GPU: software
   EXPO_PUBLIC_TEST_MODE: '1'
   EXPO_PUBLIC_VISUAL_FIXTURES: '1'
   EXPO_PUBLIC_API_URL: ''
@@ -35,6 +36,7 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - run: npm ci --no-audit --no-fund
+      - run: python3 -m unittest discover -s tests/native -p 'test_*.py'
       - run: npm run verify -- --bundles
       - run: cd apps/mobile && npx --no-install expo prebuild --platform android --no-install
       - name: Build isolated visual fixture APK, never the ordinary phone release
@@ -55,6 +57,9 @@ jobs:
           api-level: 36
           arch: x86_64
           profile: pixel_6
+          ram-size: 3072M
+          heap-size: 512M
+          emulator-options: -no-window -gpu software -no-snapshot -noaudio -no-boot-anim
           disable-animations: false
           script: python3 scripts/native/android-visual.py
       - name: Preserve immutable fixture and source provenance
