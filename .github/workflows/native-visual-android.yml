@@ -1,0 +1,79 @@
+name: CUKI Android native reference capture
+on:
+  push:
+    branches: [implementation/cuki-verified]
+    paths: [.github/workflows/native-visual-android.yml, ci/android-visual-request.json]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cuki-android-reference-capture
+  cancel-in-progress: true
+env:
+  CI: '1'
+  EXPO_NO_TELEMETRY: '1'
+  EXPO_PUBLIC_TEST_MODE: '1'
+  EXPO_PUBLIC_VISUAL_FIXTURES: '1'
+  EXPO_PUBLIC_API_URL: ''
+  EXPO_PUBLIC_SUPABASE_URL: ''
+  NODE_OPTIONS: --max-old-space-size=4096
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci --no-audit --no-fund
+      - run: npm run verify -- --bundles
+      - run: cd apps/mobile && npx --no-install expo prebuild --platform android --no-install
+      - name: Compile the isolated visual application with its checked-in JVM budget
+        run: |
+          mkdir -p artifacts/native/visual-android
+          free -h > artifacts/native/visual-android/memory.txt
+          cd apps/mobile/android
+          grep '^org.gradle.jvmargs=' gradle.properties | tee ../../../artifacts/native/visual-android/gradle-budget.txt
+          set -o pipefail
+          ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon --max-workers=2 --stacktrace 2>&1 | tee ../../../artifacts/native/visual-android/build.log
+      - run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          python3 -m venv /tmp/cuki-visual-driver
+          /tmp/cuki-visual-driver/bin/python -m pip install uiautomator2==3.7.0
+          echo /tmp/cuki-visual-driver/bin >> "$GITHUB_PATH"
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          script: python3 scripts/native/android-visual.py
+      - name: Preserve source and test-only binary provenance
+        if: always()
+        run: |
+          mkdir -p artifacts/native/visual-android
+          git rev-parse HEAD > artifacts/native/visual-android/COMMIT.txt
+          git archive --format=zip HEAD > artifacts/native/visual-android/source.zip
+          apk=apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          if test -f "$apk"; then
+            cp "$apk" artifacts/native/visual-android/CUKI-VISUAL-ONLY-x86_64.apk
+            sha256sum "$apk" > artifacts/native/visual-android/APK.sha256
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cuki-android-visual-${{ github.sha }}
+          path: artifacts/native/visual-android
+          retention-days: 30
+          if-no-files-found: error
