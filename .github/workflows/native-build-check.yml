@@ -18,7 +18,7 @@ permissions:
   contents: read
 concurrency:
   group: cuki-native-binary-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 # No API credentials or production data are embedded in this guest-test variant.
 env:
   CI: '1'
@@ -38,6 +38,8 @@ jobs:
           node-version: '22.16.0'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Verify infrastructure recovery cannot hide app failures
+        run: python3 -m unittest discover -s tests/native -p 'test_*.py'
       - name: Verify source, nonempty tests and both production JS bundles
         run: npm run verify -- --bundles
       - name: Preserve immutable source and dependency/build provenance
@@ -118,33 +120,43 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: cd apps/mobile && npx --no-install expo prebuild --platform ios --no-install
       - run: cd apps/mobile/ios && pod install
-      - name: Compile CUKITest simulator app, without distribution signing
+      - name: Add an actual native XCTest target
+        run: ruby scripts/native/ios/add-ui-tests.rb
+      - name: Build simulator app and tests with ad-hoc entitlements
         run: |
           mkdir -p artifacts/native/ios
           set -o pipefail
           cd apps/mobile/ios
           test -d CUKITest.xcworkspace
-          xcodebuild -list -json -workspace CUKITest.xcworkspace > ../../../artifacts/native/ios/schemes.json
-          python3 -c 'import json; d=json.load(open("../../../artifacts/native/ios/schemes.json")); assert "CUKITest" in d["workspace"]["schemes"]'
-          xcodebuild -workspace CUKITest.xcworkspace -scheme CUKITest -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | tee ../../../artifacts/native/ios/build.log
-      - name: Install and launch real simulator application
+          # CODE_SIGNING_ALLOWED=NO strips the simulated keychain entitlement.
+          # '-' is local ad-hoc signing, not an Apple distribution identity.
+          xcodebuild -workspace CUKITest.xcworkspace -scheme CUKISmoke -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build-for-testing 2>&1 | tee ../../../artifacts/native/ios/build.log
+      - name: Run native guest navigation and durable food XCTest
         run: |
+          set -o pipefail
           udid=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for xs in d["devices"].values() for x in xs if x.get("isAvailable") and "iPhone" in x["name"]))')
           xcrun simctl boot "$udid"
           xcrun simctl bootstatus "$udid" -b
+          xcrun simctl ui "$udid" appearance dark
+          cd apps/mobile/ios
+          xcodebuild -workspace CUKITest.xcworkspace -scheme CUKISmoke -configuration Release -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build -resultBundlePath ../../../artifacts/native/ios/NativeSmoke.xcresult CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test-without-building 2>&1 | tee ../../../artifacts/native/ios/test.log
+      - name: Preserve app, screenshots, simulator and actual test results
+        if: always()
+        run: |
+          mkdir -p artifacts/native/ios
           app=apps/mobile/ios/build/Build/Products/Release-iphonesimulator/CUKITest.app
-          test -d "$app"
-          xcrun simctl install "$udid" "$app"
-          xcrun simctl launch "$udid" com.cuki.app.test | tee artifacts/native/ios/launch.txt
-          sleep 15
-          xcrun simctl io "$udid" screenshot artifacts/native/ios/welcome.png
-          xcrun simctl openurl "$udid" 'cuki://home'
-          sleep 8
-          xcrun simctl io "$udid" screenshot artifacts/native/ios/home.png
-          xcrun simctl spawn "$udid" log show --last 3m --style compact --predicate 'process == "CUKITest"' > artifacts/native/ios/runtime.log
+          if test -d "$app"; then
+            ditto -c -k --sequesterRsrc --keepParent "$app" artifacts/native/ios/CUKI-simulator.app.zip
+            shasum -a 256 artifacts/native/ios/CUKI-simulator.app.zip > artifacts/native/ios/SHA256.txt
+          fi
+          result=artifacts/native/ios/NativeSmoke.xcresult
+          if test -d "$result"; then
+            xcrun xcresulttool get test-results summary --path "$result" --format json > artifacts/native/ios/test-summary.json
+            xcrun xcresulttool export attachments --path "$result" --output-path artifacts/native/ios/attachments
+          fi
           xcrun simctl list devices -j > artifacts/native/ios/devices.json
-          ditto -c -k --sequesterRsrc --keepParent "$app" artifacts/native/ios/CUKI-simulator.app.zip
-          shasum -a 256 artifacts/native/ios/CUKI-simulator.app.zip > artifacts/native/ios/SHA256.txt
+      - name: Require nonempty passing native UI tests
+        run: python3 scripts/native/ios/assert-test-results.py artifacts/native/ios/test-summary.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

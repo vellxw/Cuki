@@ -2,12 +2,35 @@
 """Native UI / process-restart smoke checks on a dedicated ephemeral test APK.
 No web renderer, database injection, fixed coordinates or production data.
 """
-import hashlib, json, os, pathlib, re, subprocess, time
+import hashlib, json, os, pathlib, re, subprocess, time, importlib.util
 import xml.etree.ElementTree as ET
 
 PACKAGE = 'com.cuki.app.test'
 OUTPUT = pathlib.Path('artifacts/native/android')
 OUTPUT.mkdir(parents=True, exist_ok=True)
+_spec = importlib.util.spec_from_file_location('dialogs', pathlib.Path(__file__).with_name('android-dialogs.py'))
+_dialogs = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_dialogs)
+infra_events = []
+
+
+def recover_launcher_dialog(xml):
+    close = _dialogs.classify_dialog(xml)
+    if close is None:
+        return False
+    if infra_events:
+        raise RuntimeError('Launcher ANR repeated; emulator infrastructure is not stable')
+    (OUTPUT / 'infrastructure-launcher-anr.xml').write_text(xml)
+    (OUTPUT / 'infrastructure-launcher-anr.png').write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
+    values = [int(x) for x in re.findall(r'\d+', close.get('bounds', ''))]
+    assert len(values) == 4
+    x1, y1, x2, y2 = values
+    adb('shell', 'input', 'tap', str((x1+x2)//2), str((y1+y2)//2))
+    infra_events.append({'event': 'external_launcher_anr_closed', 'at': time.time(), 'title': "Quickstep isn't responding"})
+    # This closes the external launcher dialog only, never resets app data or hides a CUKI crash.
+    time.sleep(4)
+    return True
+
 
 
 def adb(*args, binary=False):
@@ -29,6 +52,8 @@ def wait_node(identifier, timeout=45):
     while time.monotonic() < end:
         try:
             text = hierarchy()
+            if recover_launcher_dialog(text):
+                continue
             for node in ET.fromstring(text).iter('node'):
                 if matches(node, identifier):
                     (OUTPUT / 'last-hierarchy.xml').write_text(text)
@@ -69,7 +94,7 @@ def scroll_to(identifier, limit=7):
 
 
 report = {'package': PACKAGE, 'sourceCommit': os.environ.get('GITHUB_SHA'), 'checks': [],
-          'startedAt': time.time(), 'scope': 'native guest navigation and food persistence; not visual-fidelity or provider approval'}
+          'startedAt': time.time(), 'infrastructureEvents': infra_events, 'scope': 'native guest navigation and food persistence; not visual-fidelity or provider approval'}
 try:
     apk = pathlib.Path('apps/mobile/android/app/build/outputs/apk/release/app-release.apk')
     if not apk.is_file():

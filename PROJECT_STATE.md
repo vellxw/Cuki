@@ -1,9 +1,19 @@
-# CUKI — reparación e integración en curso
+# CUKI — continuación de la verificación nativa
 
-La base de esta reparación es el snapshot remoto 973de58250130ceb2eaeac669ae5d8325c319264, reconciliado por archivo con CUKI_Implementacion_Checkpoint_20260915.zip. No se reescribió la Home aprobada ni se reemplazaron las correcciones remotas de autenticación/sync/borradores.
+Base de esta continuación: d293af81d60d3225c6eb4cad2a4bb7a23795bb07, recuperado desde el artefacto de fuente inmutable de la CI. Código de la aplicación conservado; no se rediseñó la Home.
 
-Restaurados: suites originales, consola administrativa y controles de verificación. Añadidas regresiones de autenticación concurrente, aislamiento de borradores y sincronización; pruebas de componentes con interfaces de sistema sustituidas. `npm test` no acepta suites vacías, omitidas ni sin resumen verificable. Corregida autorización del invitado para las rutas públicas. Eliminados dos imports de imágenes demo que no utiliza ninguna pantalla; las capturas de usuario no se sustituyen por ellas.
+## Evidencia revisada
 
-Verificación local de esta reparación: TypeScript; 35 pruebas core, 19 API/SQL y 6 componentes; bundles Android/iOS. Esto usa dependencias recuperadas y NO acredita instalación limpia ni binarios nativos. La CI volverá a verificar desde npm ci. Integración SQL local con PGlite no equivale a PostgreSQL externo ni proveedores reales.
+La ejecución 35031959284 compiló Android e iOS. Su captura iOS mostró un error de SecureStore/Keychain: faltaba un entitlement; que simctl devolviera un PID NO acreditaba inicio correcto. Android quedó tapado por el aviso «Quickstep isn't responding» del launcher del emulador. No son dos apps validadas.
 
-Próximo bloque: CI rápida desde fuente completa, APK autónomo y simulador iOS, recorridos con persistencia y capturas nativas. No hay todavía binario instalado de esta revisión ni comparación visual aprobada. Servicios externos (IA, stores, hosting, Health) se deben validar por separado. La app no está declarada completa.
+Se está reintentando el job Android original por ese fallo de infraestructura, sin cambiar el APK ni eliminar pruebas. La validación nueva de iOS reemplaza el simple launch/screenshot por XCTest con navegación y registro persistente; se habilita firma ad-hoc del simulador en lugar de CODE_SIGNING_ALLOWED=NO. Esto no firma una app distribuible en iPhone y está pendiente de ejecución.
+
+El smoke de Android conserva evidencia de un posible fallo del launcher y permite cerrarlo una vez. Los ANR de CUKI o de procesos desconocidos siguen siendo errores. Cinco pruebas Python del clasificador pasaron localmente. Las suites existentes y TypeScript de la fuente d293af8 se volvieron a ejecutar localmente; las dependencias locales son recuperadas, por lo que la instalación limpia sigue verificándose en CI.
+
+## Próximas comprobaciones
+
+1. Leer resultados reales de ambos recorridos y corregir cualquier fallo de app/QA.
+2. Conservar binarios y capturas por commit; entregar APK solo con alcance de prueba explícito.
+3. Continuar entrenamiento, integración cliente-servidor y comparaciones visuales nativas de las seis referencias.
+
+Servicios externos, firma de distribución, backend público y fidelidad visual completa siguen sin aprobar. No se tocó otro proyecto Supabase ni producción. .local y caches Python quedan excluidos de Git para evitar publicar bases, correos de prueba o datos locales.

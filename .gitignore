@@ -17,5 +17,6 @@ coverage/
 .DS_Store
 private-references/
 artifacts/native/**/*.app/
-
-node_modules
+.local/
+__pycache__/
+*.pyc
