@@ -1,0 +1,96 @@
+name: CUKI native client and real backend
+on:
+  push:
+    branches: [implementation/cuki-verified]
+    paths: [ci/native-cloud-request.json]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cuki-native-cloud-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  native-cloud:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_PUBLIC_TEST_MODE: '1'
+      EXPO_PUBLIC_API_URL: http://10.0.2.2:3000
+      EXPO_PUBLIC_SUPABASE_URL: http://10.0.2.2:3000
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: local-development-not-a-secret
+      CUKI_NATIVE_CLOUD_QA: '1'
+      APP_ENV: test
+      AUTH_MODE: local
+      PUBLIC_ORIGIN: http://10.0.2.2:3000
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci --no-audit --no-fund
+      - name: Check the same source and nonempty tests before compilation
+        run: npm run verify -- --bundles
+      - run: cd apps/mobile && npx --no-install expo prebuild --platform android --no-install
+      - name: Build dedicated emulator-backend QA APK, not the ordinary phone distribution
+        run: |
+          mkdir -p artifacts/native/android-cloud
+          cd apps/mobile/android
+          set -o pipefail
+          ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon --max-workers=2 --stacktrace 2>&1 | tee ../../../artifacts/native/android-cloud/build.log
+      - name: Start isolated local identity, real API, durable SQL and worker
+        run: |
+          node scripts/bootstrap.mjs
+          mkdir -p artifacts/native/android-cloud
+          nohup npm run api > artifacts/native/android-cloud/backend.log 2>&1 &
+          echo "$!" > .local/native-cloud-server.pid
+          python3 - <<'PY'
+          import json,time,urllib.request
+          for _ in range(40):
+              try:
+                  state=json.load(urllib.request.urlopen('http://127.0.0.1:3000/health',timeout=2))
+                  assert state['environment']=='test' and state['status']=='ok'
+                  break
+              except Exception: time.sleep(.5)
+          else: raise SystemExit('The real backend did not start')
+          PY
+      - name: Enable KVM for the ephemeral test emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          script: python3 scripts/native/android-cloud-smoke.py
+      - name: Record source and variant; do not include ephemeral secrets or the database
+        if: always()
+        run: |
+          mkdir -p artifacts/native/android-cloud
+          git rev-parse HEAD > artifacts/native/android-cloud/COMMIT.txt
+          git archive --format=zip HEAD > artifacts/native/android-cloud/source.zip
+          printf '%s\n' 'QA ONLY: x86_64 emulator uses 10.0.2.2:3000. Not a deployed cloud service or physical-phone release.' > artifacts/native/android-cloud/VARIANT.txt
+          if test -f .local/native-cloud-server.pid; then kill "$(cat .local/native-cloud-server.pid)" || true; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cuki-native-cloud-${{ github.sha }}
+          path: |
+            apps/mobile/android/app/build/outputs/apk/release/*.apk
+            artifacts/native/android-cloud
+            artifacts/verification
+          retention-days: 30
+          if-no-files-found: error
