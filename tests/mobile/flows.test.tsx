@@ -173,3 +173,40 @@ test('successful notification cancellation is persisted when continuing after pr
   expect(reopened.getSnapshot().sessions[0].restDeadline).toBeNull();
   expect(reopened.getSnapshot().sessions[0].restNotificationId).toBeNull();
 });
+
+async function seedPlanDraft() {
+  const {newPlanDraft}=require('../../apps/mobile/src/screens/drafts');
+  const draft=newPlanDraft(); draft.name='Rutina con decimales';
+  draft.days[0].exercises=[{id:'plan-exercise-qa',exerciseId:repo.getSnapshot().exercises[0].id,
+    sets:3,repsMin:8,repsMax:12,restSeconds:90,load:null,superset:null}];
+  await repo.dispatch({type:'draft',key:'plan-editor:new',value:draft});
+  return draft;
+}
+test('plan editor preserves a comma while typing and its decimal load across remount and save',async()=>{
+  await seedPlanDraft();
+  const mounted=show(<PlanEditor params={{}}/>);
+  for(const text of ['7','72','72,','72,5']) {
+    await act(async()=>{fireEvent.changeText(screen.getByLabelText('Carga inicial kg, ejercicio 1'),text)});
+    await waitFor(()=>expect(screen.getByLabelText('Carga inicial kg, ejercicio 1').props.value).toBe(text));
+  }
+  mounted.unmount();repo=await new ClientRepo(disk.driver,'guest','UTC').init();
+  show(<PlanEditor params={{}}/>);
+  expect(screen.getByLabelText('Carga inicial kg, ejercicio 1').props.value).toBe('72,5');
+  fireEvent.press(screen.getByRole('button',{name:'Guardar plan'}));
+  await waitFor(()=>expect(repo.getSnapshot().plans).toHaveLength(1));
+  expect(repo.getSnapshot().plans[0].days[0].exercises[0].load).toBe(72.5);
+  expect(repo.getSnapshot().plans[0]).not.toHaveProperty('numericInputs');
+});
+test('an empty required plan number remains editable and cannot silently save its former value',async()=>{
+  await seedPlanDraft();show(<PlanEditor params={{}}/>);
+  await act(async()=>{fireEvent.changeText(screen.getByLabelText('Series, ejercicio 1'),'')});
+  expect(screen.getByLabelText('Series, ejercicio 1').props.value).toBe('');
+  fireEvent.press(screen.getByRole('button',{name:'Guardar plan'}));
+  await waitFor(()=>expect(screen.getByText(/Series, ejercicio 1.*Ingresá un número válido/)).toBeTruthy());
+  expect(repo.getSnapshot().plans).toHaveLength(0);
+  expect(navigation.router.replace).not.toHaveBeenCalled();
+  await act(async()=>{fireEvent.changeText(screen.getByLabelText('Series, ejercicio 1'),'4')});
+  fireEvent.press(screen.getByRole('button',{name:'Guardar plan'}));
+  await waitFor(()=>expect(repo.getSnapshot().plans).toHaveLength(1));
+  expect(repo.getSnapshot().plans[0].days[0].exercises[0].sets).toBe(4);
+});

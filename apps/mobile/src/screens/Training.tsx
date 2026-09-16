@@ -12,7 +12,7 @@ import { uid, fmt, normalize, numberInput, invariant, sessionSeconds, duration, 
 import { blankSet, createSession } from '../../../../packages/core/state';
 import { nextExerciseIndex, loadToDisplay, loadToKg, progressionCandidate } from '../../../../packages/core/training';
 import type { Exercise, PlanDay, PlanExercise, SetEntry, WorkoutSession, WorkoutPlan, LoadMode, SetKind } from '../../../../packages/core/types';
-import { newPlanDraft, type PlanDraft } from './drafts';
+import { newPlanDraft, planFromDraft, type PlanDraft, type PlanNumberKey } from './drafts';
 import { clearRestNotification } from '../../../../packages/core/workout-notifications';
 const modeLabel: Record<LoadMode, string> = {
   external_total: 'Carga total',
@@ -149,6 +149,11 @@ export function PlanEditor({
       ...patch
     } : e)
   });
+  const editNumber = (id: string, key: PlanNumberKey, text: string) => d.set({
+    numericInputs: {...d.value.numericInputs, [id]: {...d.value.numericInputs?.[id], [key]: text}}
+  });
+  const numberText = (e: PlanExercise, key: PlanNumberKey) =>
+    d.value.numericInputs?.[e.id]?.[key] ?? (e[key] === null ? '' : String(e[key]));
   const move = (i: number, delta: number) => {
     const es = [...day.exercises];
     if (i + delta < 0 || i + delta >= es.length) return;
@@ -169,17 +174,7 @@ export function PlanEditor({
       return <Card key={e.id}><Txt size={21} weight="600">{exercise?.name ?? 'Ejercicio no encontrado'}</Txt><Txt size={12} tone="secondary">{exercise ? modeLabel[exercise.loadMode] : ''}. Cargas guardadas en kg.</Txt><View style={layout.wrap}>{([['sets', 'Series'], ['repsMin', 'Reps mínimas'], ['repsMax', 'Reps máximas'], ['restSeconds', 'Descanso (s)']] as const).map(([key, label]) => <View key={key} style={{
             width: '46%',
             minWidth: 125
-          }}><NumberField label={`${label}, ejercicio ${i + 1}`} value={String(e[key])} onChangeText={v => {
-              if (/^\d*$/.test(v)) edit(e.id, {
-                [key]: Number(v)
-              });
-            }} /></View>)}</View><NumberField label={`Carga inicial kg, ejercicio ${i + 1}`} value={e.load === null ? '' : String(e.load)} onChangeText={v => {
-          if (!v.trim()) edit(e.id, {
-            load: null
-          });else if (/^\d+(?:[.,]\d*)?$/.test(v)) edit(e.id, {
-            load: Number(v.replace(',', '.'))
-          });
-        }} /><Field label={`Grupo de superserie o circuito, ejercicio ${i + 1}`} hint="Misma letra agrupa ejercicios. Vacío: series normales." value={e.superset ?? ''} onChangeText={v => edit(e.id, {
+          }}><NumberField label={`${label}, ejercicio ${i + 1}`} value={numberText(e,key)} onChangeText={v => editNumber(e.id,key,v)} /></View>)}</View><NumberField label={`Carga inicial kg, ejercicio ${i + 1}`} value={numberText(e,'load')} onChangeText={v => editNumber(e.id,'load',v)} /><Field label={`Grupo de superserie o circuito, ejercicio ${i + 1}`} hint="Misma letra agrupa ejercicios. Vacío: series normales." value={e.superset ?? ''} onChangeText={v => edit(e.id, {
           superset: v.trim() || null
         })} /><View style={layout.wrap}><Button title="Subir" variant="quiet" disabled={i === 0} onPress={() => move(i, -1)} /><Button title="Bajar" variant="quiet" disabled={i === day.exercises.length - 1} onPress={() => move(i, 1)} /><IconButton name="trash" label={`Quitar ${exercise?.name}`} onPress={() => updateDay({
             exercises: day.exercises.filter(x => x.id !== e.id)
@@ -213,15 +208,7 @@ export function PlanEditor({
       await d.flush();
       const old = state.plans.find(p => p.id === d.value.id);
       invariant(!old || old.version === d.value.version, 'El plan cambió mientras lo editabas. Conservamos el borrador; revisá la versión.');
-      const plan: WorkoutPlan = {
-        ...d.value,
-        version: d.value.version + 1,
-        weeks: numberInput(d.value.weeks, {
-          min: 1,
-          max: 104,
-          integer: true
-        })!
-      };
+      const plan = planFromDraft(d.value);
       await repo.dispatch({
         type: 'plan',
         plan
