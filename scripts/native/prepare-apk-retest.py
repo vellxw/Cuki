@@ -33,8 +33,13 @@ def prepare():
     run = json.loads(subprocess.check_output(['gh', 'api', f"repos/vellxw/Cuki/actions/runs/{spec['runId']}"], text=True))
     if run['head_sha'] != source or run['head_branch'] != 'implementation/cuki-verified':
         raise ValueError('Source run does not match the requested source')
-    if run['status'] != 'completed':
-        raise ValueError('Source build must have completed before re-testing its artifact')
+    jobs = json.loads(subprocess.check_output(['gh', 'api', f"repos/vellxw/Cuki/actions/runs/{spec['runId']}/jobs"], text=True))
+    android = [job for job in jobs['jobs'] if job['name'] == 'android' and job['status'] == 'completed']
+    if len(android) != 1 or not any(step['name'] == 'Compile standalone test APK for emulator and arm64 phones'
+                                  and step['conclusion'] == 'success' for step in android[0]['steps']):
+        raise ValueError('Require a completed Android job with a successful binary compilation')
+    # A previous UI assertion may have failed. Re-testing preserves that history;
+    # successful compilation is not called a successful native flow.
     artifact = 'cuki-android-binary-' + source
     with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
         out.write(f"run={spec['runId']}\nsource={source}\nartifact={artifact}\n")
