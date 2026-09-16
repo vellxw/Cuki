@@ -30,13 +30,13 @@ final class CUKISmokeTests: XCTestCase {
         // First launch must pass SecureStore restore and SQLite startup. A spinner/error
         // screen does not count as a successful launch even if simctl returned a PID.
         tap("welcome-explore")
-        _ = node("Nutrición de hoy"); capture("01-home-empty")
+        _ = node("Abrir diario de nutrición"); capture("01-home-empty")
         tap("nav-recipes"); _ = node("Buscar recetas e ingredientes"); capture("02-recipes")
         tap("nav-register"); _ = node("Buscar alimento"); capture("03-register")
         tap("Cerrar"); _ = node("Buscar recetas e ingredientes")
         tap("nav-train"); _ = node("SC-42"); capture("04-training")
         tap("nav-progress"); _ = node("SC-57"); capture("05-progress")
-        tap("nav-home"); _ = node("Nutrición de hoy")
+        tap("nav-home"); _ = node("Abrir diario de nutrición")
         tap("home-register"); tap("Buscar alimento")
         let search = app.textFields.matching(identifier: "Alimento o ingrediente").firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 20))
@@ -46,10 +46,10 @@ final class CUKISmokeTests: XCTestCase {
         tap("food-portion")
         let amount = node("portion-amount")
         XCTAssertEqual(amount.value as? String, "100")
-        tap("portion-save"); _ = node("Nutrición de hoy")
+        tap("portion-save"); _ = node("Abrir diario de nutrición")
         tap("Abrir diario de nutrición"); _ = node(title); capture("06-saved-food")
         app.terminate(); app.launch()
-        _ = node("Nutrición de hoy")
+        _ = node("Abrir diario de nutrición")
         tap("Abrir diario de nutrición"); _ = node(title); capture("07-persisted-food-after-process-restart")
     }
 }
