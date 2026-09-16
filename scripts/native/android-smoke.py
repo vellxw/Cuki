@@ -84,17 +84,53 @@ def launch():
 
 
 def scroll_to(identifier, limit=7):
-    for _ in range(limit):
-        try:
-            return wait_node(identifier, timeout=3)
-        except AssertionError:
-            width, height = [int(v) for v in re.findall(r'(\d+)x(\d+)', adb('shell', 'wm', 'size'))[-1]]
-            adb('shell', 'input', 'swipe', str(width // 2), str(int(height * .70)), str(width // 2), str(int(height * .32)), '350')
-    return wait_node(identifier)
+    # Return targets already visible; otherwise scan both directions. A retained
+    # recipe/plan scroll offset can legitimately put an earlier field above us.
+    for direction in ('down', 'up'):
+        previous = None
+        for _ in range(limit):
+            try:
+                return wait_node(identifier, timeout=1)
+            except AssertionError:
+                xml = hierarchy()
+                signature = [(n.get('resource-id'), n.get('content-desc'), n.get('bounds'))
+                             for n in ET.fromstring(xml).iter('node')]
+                if signature == previous:
+                    break
+                previous = signature
+                width, height = [int(v) for v in re.findall(r'(\d+)x(\d+)', adb('shell', 'wm', 'size'))[-1]]
+                start, end = (.70, .32) if direction == 'down' else (.32, .70)
+                adb('shell', 'input', 'swipe', str(width // 2), str(int(height * start)), str(width // 2), str(int(height * end)), '350')
+    return wait_node(identifier, timeout=3)
+
+
+def fill(identifier, text):
+    """Use the actual accessible input; clear its existing characters, not the screen stack."""
+    scroll_to(identifier)
+    tap(identifier)
+    node = wait_node(identifier, predicate=lambda n: n.get('class') == 'android.widget.EditText' and n.get('focused') == 'true')
+    current = node.get('text', '')
+    # These test fields contain short ASCII names or decimal values.
+    assert len(current) < 100 and text.isascii()
+    adb('shell', 'input', 'keyevent', 'KEYCODE_MOVE_END')
+    if current:
+        adb('shell', 'input', 'keyevent', *(['KEYCODE_DEL'] * len(current)))
+    adb('shell', 'input', 'text', text.replace(' ', '%s'))
+    wait_node(identifier, predicate=lambda n: n.get('class') == 'android.widget.EditText' and n.get('text') == text)
+    # Back is only safe when an on-screen IME is actually shown. Hardware keyboards
+    # leave it hidden; blindly pressing Back would navigate away and invalidate this test.
+    ime = adb('shell', 'dumpsys', 'input_method')
+    if re.search(r'(?:mInputShown|isInputViewShown)=true\b', ime):
+        adb('shell', 'input', 'keyevent', 'KEYCODE_BACK')
+
+
+def tap_scrolled(identifier):
+    scroll_to(identifier)
+    tap(identifier)
 
 
 report = {'package': PACKAGE, 'sourceCommit': os.environ.get('GITHUB_SHA'), 'checks': [],
-          'startedAt': time.time(), 'infrastructureEvents': infra_events, 'scope': 'native guest navigation and food persistence; not visual-fidelity or provider approval'}
+          'startedAt': time.time(), 'infrastructureEvents': infra_events, 'scope': 'native guest navigation, food persistence and superset workout recovery; not visual-fidelity or provider approval'}
 try:
     apk = pathlib.Path('apps/mobile/android/app/build/outputs/apk/release/app-release.apk')
     if not apk.is_file():
@@ -144,6 +180,33 @@ try:
     wait_node('SC-07'); tap('Abrir diario de nutrición'); wait_node('SC-08'); scroll_to(name)
     capture('07-diary-after-offline-process-restart')
     report['checks'].append('saved-food-survives-process-restart-without-network-or-metro')
+    # Create a real two-exercise superset through the UI. No database seed or API
+    # test endpoint injects a workout into the native application.
+    tap('Volver'); wait_node('SC-07'); tap('nav-train'); wait_node('SC-42')
+    tap_scrolled('Crear rutina'); wait_node('SC-44')
+    fill('Nombre del plan', 'Rutina QA nativa')
+    tap_scrolled('Añadir ejercicio al día'); wait_node('SC-45')
+    fill('Buscar ejercicio o equipo', 'Press inclinado'); tap('Press inclinado'); wait_node('SC-44')
+    fill('Series, ejercicio 1', '1')
+    fill('Grupo de superserie o circuito, ejercicio 1', 'A')
+    tap_scrolled('Añadir ejercicio al día'); wait_node('SC-45')
+    fill('Buscar ejercicio o equipo', 'Remo sentado'); tap('Remo sentado'); wait_node('SC-44')
+    fill('Series, ejercicio 2', '1')
+    fill('Grupo de superserie o circuito, ejercicio 2', 'A')
+    tap_scrolled('Guardar plan'); wait_node('SC-42'); tap_scrolled('Iniciar Día A'); wait_node('SC-47')
+    wait_node('Press inclinado'); fill('Carga kg', '20'); fill('Repeticiones', '8')
+    tap_scrolled('Completar serie'); wait_node('SC-48'); capture('08-rest-after-first-superset-set')
+    report['checks'].append('create-plan-with-two-exercise-superset-and-complete-first-set')
+    adb('shell', 'am', 'force-stop', PACKAGE); launch(); wait_node('SC-07')
+    tap('nav-train'); wait_node('SC-42'); tap_scrolled('Reanudar sesión'); wait_node('SC-48')
+    tap_scrolled('Continuar entrenamiento'); wait_node('SC-47'); wait_node('Remo sentado')
+    fill('Carga kg', '25'); fill('Repeticiones', '8')
+    tap_scrolled('Completar serie'); wait_node('SC-48'); tap_scrolled('Finalizar sesión'); wait_node('SC-51')
+    fill('Cómo fue la sesión, opcional', 'Persistencia QA sin red')
+    tap_scrolled('Guardar y finalizar sesión'); wait_node('SC-52')
+    wait_node('2 series de trabajo / actividades válidas')
+    wait_node('Persistencia QA sin red'); capture('09-durable-workout-summary')
+    report['checks'].append('superset-rest-survives-offline-process-death-and-completes-two-real-sets')
     report['passed'] = True
 except Exception as error:
     report['passed'] = False; report['error'] = str(error)

@@ -16,9 +16,28 @@ final class CUKISmokeTests: XCTestCase {
     }
     private func tap(_ id: String, file: StaticString = #filePath, line: UInt = #line) {
         let item = node(id, file: file, line: line)
-        for _ in 0..<6 { if item.isHittable { break }; app.swipeUp() }
+        makeHittable(item)
         XCTAssertTrue(item.isHittable, "Element not hittable: \(id)", file: file, line: line)
         item.tap()
+    }
+    private func makeHittable(_ item: XCUIElement) {
+        for _ in 0..<8 {
+            if item.isHittable { return }
+            let scroll = app.scrollViews.firstMatch
+            let surface = scroll.exists ? scroll : app!
+            if item.frame.minY < app.frame.minY + 80 { surface.swipeDown() }
+            else { surface.swipeUp() }
+        }
+    }
+    private func fill(_ id: String, _ value: String, file: StaticString = #filePath, line: UInt = #line) {
+        let item = node(id, file: file, line: line)
+        makeHittable(item)
+        XCTAssertTrue(item.isHittable, "Input not hittable: \(id)", file: file, line: line)
+        item.tap()
+        let existing = item.value as? String ?? ""
+        if !existing.isEmpty { item.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count)) }
+        item.typeText(value)
+        XCTAssertEqual(item.value as? String, value, file: file, line: line)
     }
     private func capture(_ name: String) {
         let screenshot = XCTAttachment(screenshot: app.screenshot())
@@ -26,7 +45,7 @@ final class CUKISmokeTests: XCTestCase {
         let tree = XCTAttachment(string: app.debugDescription)
         tree.name = name + "-accessibility"; tree.lifetime = .keepAlways; add(tree)
     }
-    func testGuestNavigationAndDurableFood() throws {
+    func testGuestNavigationFoodAndWorkoutRecovery() throws {
         // First launch must pass SecureStore restore and SQLite startup. A spinner/error
         // screen does not count as a successful launch even if simctl returned a PID.
         tap("welcome-explore")
@@ -51,5 +70,29 @@ final class CUKISmokeTests: XCTestCase {
         app.terminate(); app.launch()
         _ = node("Abrir diario de nutrición")
         tap("Abrir diario de nutrición"); _ = node(title); capture("07-persisted-food-after-process-restart")
+        // Exercise planning and state restoration through native controls, without test-data injection.
+        tap("Volver"); tap("nav-train"); _ = node("SC-42")
+        tap("Crear rutina"); _ = node("SC-44")
+        fill("Nombre del plan", "Rutina QA nativa")
+        tap("Añadir ejercicio al día"); _ = node("SC-45")
+        fill("Buscar ejercicio o equipo", "Press inclinado"); tap("Press inclinado"); _ = node("SC-44")
+        fill("Series, ejercicio 1", "1")
+        fill("Grupo de superserie o circuito, ejercicio 1", "A")
+        tap("Añadir ejercicio al día"); _ = node("SC-45")
+        fill("Buscar ejercicio o equipo", "Remo sentado"); tap("Remo sentado"); _ = node("SC-44")
+        fill("Series, ejercicio 2", "1")
+        fill("Grupo de superserie o circuito, ejercicio 2", "A")
+        tap("Guardar plan"); _ = node("SC-42"); tap("Iniciar Día A"); _ = node("SC-47")
+        _ = node("Press inclinado"); fill("Carga kg", "20"); fill("Repeticiones", "8")
+        tap("Completar serie"); _ = node("SC-48"); capture("08-rest-after-first-superset-set")
+        app.terminate(); app.launch(); _ = node("Abrir diario de nutrición")
+        tap("nav-train"); tap("Reanudar sesión"); _ = node("SC-48")
+        tap("Continuar entrenamiento"); _ = node("SC-47"); _ = node("Remo sentado")
+        fill("Carga kg", "25"); fill("Repeticiones", "8")
+        tap("Completar serie"); _ = node("SC-48"); tap("Finalizar sesión"); _ = node("SC-51")
+        fill("Cómo fue la sesión, opcional", "Persistencia QA nativa")
+        tap("Guardar y finalizar sesión"); _ = node("SC-52")
+        _ = node("2 series de trabajo / actividades válidas")
+        _ = node("Persistencia QA nativa"); capture("09-durable-workout-summary")
     }
 }

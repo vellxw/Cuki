@@ -13,6 +13,7 @@ import { blankSet, createSession } from '../../../../packages/core/state';
 import { nextExerciseIndex, loadToDisplay, loadToKg, progressionCandidate } from '../../../../packages/core/training';
 import type { Exercise, PlanDay, PlanExercise, SetEntry, WorkoutSession, WorkoutPlan, LoadMode, SetKind } from '../../../../packages/core/types';
 import { newPlanDraft, type PlanDraft } from './drafts';
+import { clearRestNotification } from '../../../../packages/core/workout-notifications';
 const modeLabel: Record<LoadMode, string> = {
   external_total: 'Carga total',
   external_per_side: 'Carga por lado',
@@ -362,27 +363,31 @@ export function ExerciseLibrary({
             mediaUri: null
           }
         });
+        const savedName = d.value.name;
+        await repo.dispatch({type: 'dropDraft', key: d.key});
+        d.set({id: uid(), name: '', muscle: '', equipment: '', instructions: '', modality: 'strength', loadMode: 'external_total'});
+        await d.flush();
+        setQ(savedName);
         setCustom(false);
-        setQ(d.value.name);
-        await repo.dispatch({
-          type: 'dropDraft',
-          key: d.key
-        });
       })} /></Card>}<Message type="error">{task.error ?? d.error}</Message></Screen>;
 }
 export function ExerciseDetail({
   params
 }: ScreenProps) {
   const {
-    state
+    state, repo
   } = useApp();
   const nav = useNav();
+  const task = useTask();
+  const active = state.sessions.some(s => s.status === 'active' || s.status === 'paused');
   const e = state.exercises.find(e => e.id === params.id);
   if (!e) return <Screen title="Ejercicio" tab="train"><Empty title="No disponible" detail="Buscá o creá un ejercicio." /></Screen>;
   const history = state.sessions.filter(s => s.status === 'completed' && s.exercises.some(x => x.exerciseId === e.id));
-  return <Screen title={e.name} subtitle={`${e.muscle} · ${e.equipment}`} tab="train" testID="SC-46"><Txt weight="600">{modeLabel[e.loadMode]}</Txt><Message>{e.loadMode === 'assisted' ? 'Más asistencia no equivale a más fuerza.' : e.loadMode === 'external_per_side' ? 'Ingresá la carga de un lado; no la multipliques sin cambiar de convención.' : 'Compará solo el mismo ejercicio, equipo y convención.'}</Message><Section title="Antes de empezar">{e.instructions.map((t, i) => <Txt key={i}>{i + 1}. {t}</Txt>)}<Message>Orientación general, no técnica validada para tu cuerpo ni consejo médico. Detené una actividad que provoque dolor y consultá a un profesional.</Message></Section><Button title="Iniciar sesión libre con este ejercicio" onPress={() => nav.go('SC-45', {
-      mode: 'start'
-    })} /><Section title="Tu historial">{history.slice(-8).reverse().map(s => <Row key={s.id} title={prettyDate(s.date)} subtitle={s.exercises.filter(x => x.exerciseId === e.id).flatMap(x => x.sets.filter(setValid).map(t => `${t.load === null ? 'Sin carga externa' : fmt(t.load, 1) + ' kg'} × ${t.reps ?? '—'}`)).join(' · ')} onPress={() => nav.go('SC-52', {
+  return <Screen title={e.name} subtitle={`${e.muscle} · ${e.equipment}`} tab="train" testID="SC-46"><Txt weight="600">{modeLabel[e.loadMode]}</Txt><Message>{e.loadMode === 'assisted' ? 'Más asistencia no equivale a más fuerza.' : e.loadMode === 'external_per_side' ? 'Ingresá la carga de un lado; no la multipliques sin cambiar de convención.' : 'Compará solo el mismo ejercicio, equipo y convención.'}</Message><Section title="Antes de empezar">{e.instructions.map((t, i) => <Txt key={i}>{i + 1}. {t}</Txt>)}<Message>Orientación general, no técnica validada para tu cuerpo ni consejo médico. Detené una actividad que provoque dolor y consultá a un profesional.</Message></Section><Button title="Iniciar sesión libre con este ejercicio" disabled={active} busy={task.busy} onPress={() => task.run(async () => {
+      const session = createSession(repo.getSnapshot(), undefined, 0, [e.id]);
+      await repo.dispatch({type: 'startSession', session});
+      nav.replace('SC-47', {id: session.id});
+    })} /><Message type="error">{task.error}</Message>{active && <Message>Ya hay una sesión en curso. Reanudala desde Entrenar antes de iniciar otra.</Message>}<Section title="Tu historial">{history.slice(-8).reverse().map(s => <Row key={s.id} title={prettyDate(s.date)} subtitle={s.exercises.filter(x => x.exerciseId === e.id).flatMap(x => x.sets.filter(setValid).map(t => `${t.load === null ? 'Sin carga externa' : fmt(t.load, 1) + ' kg'} × ${t.reps ?? '—'}`)).join(' · ')} onPress={() => nav.go('SC-52', {
         id: s.id
       })} />)}{!history.length && <Txt tone="muted">Aún no registraste este ejercicio.</Txt>}</Section></Screen>;
 }
@@ -397,7 +402,7 @@ export function ActiveWorkout({
     state
   } = useApp();
   const session = state.sessions.find(s => s.id === params.id) ?? state.sessions.find(s => s.status === 'active' || s.status === 'paused');
-  return <Screen title={session?.name ?? 'Entrenamiento'} subtitle={session ? `Ejercicio ${session.currentExercise + 1} de ${session.exercises.length}` : undefined} tab="train" background testID="SC-47">{session && ['active', 'paused'].includes(session.status) ? <WorkoutBody key={session.id + ':' + session.currentExercise} session={session} /> : <SessionAbsent />}</Screen>;
+  return <Screen title={session?.name ?? 'Entrenamiento'} subtitle={session ? `Ejercicio ${session.currentExercise + 1} de ${session.exercises.length}` : undefined} tab="train" background testID="SC-47">{params.notificationWarning === '1' && <Message type="warning">El descanso terminó en CUKI, pero el sistema no confirmó cancelar su aviso. Tus series están guardadas.</Message>}{session && ['active', 'paused'].includes(session.status) ? <WorkoutBody key={session.id + ':' + session.currentExercise} session={session} /> : <SessionAbsent />}</Screen>;
 }
 function WorkoutBody({
   session
@@ -572,10 +577,8 @@ export function Rest({
       sessionId: session.id,
       deadline: null
     });
-    await cancelRest(session.restNotificationId);
-    nav.finish('SC-47', {
-      id: session.id
-    });
+    const cancelled = await clearRestNotification(repo, session.id, cancelRest);
+    nav.finish('SC-47', {id: session.id, notificationWarning: cancelled ? undefined : '1'});
   });
   return <Screen title="Descanso" subtitle="Respirá. Continuá cuando estés preparado." tab="train" background testID="SC-48"><Timer deadline={session.restDeadline} /><View style={[layout.row, {
       justifyContent: 'center'
@@ -720,10 +723,8 @@ export function FinishWorkout({
           id: session.id,
           note
         });
-        await cancelRest(session.restNotificationId);
-        nav.replace('SC-52', {
-          id: session.id
-        });
+        const cancelled = await clearRestNotification(repo, session.id, cancelRest);
+        nav.replace('SC-52', {id: session.id, notificationWarning: cancelled ? undefined : '1'});
         if (api.configured) void sync.sync().catch(() => {});
       })} /><Button title="Volver a entrenar" variant="secondary" onPress={() => nav.finish('SC-47', {
         id: session.id
@@ -732,7 +733,7 @@ export function FinishWorkout({
           type: 'discardSession',
           id: session.id
         });
-        await cancelRest(session.restNotificationId);
+        await clearRestNotification(repo, session.id, cancelRest);
         nav.tab('train');
       }), true)} /></> : <SessionAbsent />}<Message type="error">{task.error}</Message></Screen>;
 }
@@ -746,7 +747,7 @@ export function WorkoutSummary({
   const task = useTask();
   const [healthMessage,setHealthMessage]=useState('');
   const session = state.sessions.find(s => s.id === params.id);
-  return <Screen title="Resumen de sesión" tab="train" testID="SC-52">{session ? <><Title>{session.name}</Title><Txt tone="secondary">{prettyDate(session.date)} · {statusLabel[session.status]}</Txt><Txt size={28} weight="600">{duration(sessionSeconds(session))}</Txt><Txt>{session.exercises.flatMap(e => e.sets).filter(setValid).length} series de trabajo / actividades válidas</Txt>{session.exercises.map(e => <Section key={e.id} title={state.exercises.find(x => x.id === e.exerciseId)?.name ?? 'Ejercicio'}>{e.sets.filter(s => s.completedAt).map((s, i) => <Row key={s.id} title={`Serie ${i + 1} · ${modeLabel[s.loadMode]}`} subtitle={`${s.load === null ? 'Sin carga externa' : fmt(s.load, 2) + ' kg'} · ${s.reps ?? '—'} reps${s.seconds ? ' · ' + duration(s.seconds) : ''}${s.meters ? ' · ' + fmt(s.meters) + ' m' : ''}${s.rir === null ? '' : ' · RIR ' + s.rir}`} />)}</Section>)}{session.note && <Txt>{session.note}</Txt>}<Message>{sessionQualifies(session) ? 'Esta sesión puede acreditar su semana si cumple las reglas del ciclo. El crédito se confirma en el servidor, no en esta pantalla.' : 'La sesión se conserva. Las series de calentamiento solas no acreditan una semana de jardín.'}</Message><Button title="Ver mi jardín" icon="leaf" onPress={() => nav.go('SC-82', {
+  return <Screen title="Resumen de sesión" tab="train" testID="SC-52">{params.notificationWarning === '1' && <Message type="warning">La sesión quedó guardada. El sistema no confirmó cancelar el aviso de descanso; todavía podría sonar.</Message>}{session ? <><Title>{session.name}</Title><Txt tone="secondary">{prettyDate(session.date)} · {statusLabel[session.status]}</Txt><Txt size={28} weight="600">{duration(sessionSeconds(session))}</Txt><Txt>{session.exercises.flatMap(e => e.sets).filter(setValid).length} series de trabajo / actividades válidas</Txt>{session.exercises.map(e => <Section key={e.id} title={state.exercises.find(x => x.id === e.exerciseId)?.name ?? 'Ejercicio'}>{e.sets.filter(s => s.completedAt).map((s, i) => <Row key={s.id} title={`Serie ${i + 1} · ${modeLabel[s.loadMode]}`} subtitle={`${s.load === null ? 'Sin carga externa' : fmt(s.load, 2) + ' kg'} · ${s.reps ?? '—'} reps${s.seconds ? ' · ' + duration(s.seconds) : ''}${s.meters ? ' · ' + fmt(s.meters) + ' m' : ''}${s.rir === null ? '' : ' · RIR ' + s.rir}`} />)}</Section>)}{session.note && <Txt>{session.note}</Txt>}<Message>{sessionQualifies(session) ? 'Esta sesión puede acreditar su semana si cumple las reglas del ciclo. El crédito se confirma en el servidor, no en esta pantalla.' : 'La sesión se conserva. Las series de calentamiento solas no acreditan una semana de jardín.'}</Message><Button title="Ver mi jardín" icon="leaf" onPress={() => nav.go('SC-82', {
         sessionId: session.id
       })} /><Button title="Exportar sesión" icon="export" variant="secondary" onPress={() => task.run(() => exportText(`cuki-session-${session.id}.json`, JSON.stringify(session, null, 2)))} /><Button title={`Exportar a ${healthName}`} variant="secondary" disabled={!sessionQualifies(session)} onPress={()=>task.run(async()=>{const result=await exportWorkoutToHealth(repo,session.id,healthWriter,healthAccountGuard(repo.accountId));setHealthMessage(result.alreadyExported?'Esta versión ya fue exportada.':'El sistema confirmó el entrenamiento. Se exportó el intervalo completo, sin inventar calorías.');})}/><Message>{healthMessage}</Message><Button title="Volver a Hoy" variant="quiet" onPress={() => nav.tab('home')} /></> : <Empty title="Sesión no disponible" detail="Consultá el historial de la cuenta actual." />}<Message type="error">{task.error}</Message></Screen>;
 }

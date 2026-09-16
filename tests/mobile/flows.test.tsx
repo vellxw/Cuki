@@ -96,3 +96,80 @@ test('completing a set persists values and rest deadline before opening the rest
   expect(reopened.getSnapshot().sessions[0].exercises[0].sets[0].reps).toBe(8);
   await waitFor(()=>expect(navigation.router.push).toHaveBeenCalledWith(expect.objectContaining({params:expect.objectContaining({screenId:'SC-48',id:session.id})})));
 });
+
+test('exercise detail starts exactly the chosen exercise without sending the user back to the library', async () => {
+  const {ExerciseDetail} = require('../../apps/mobile/src/screens/Training');
+  const exercise=repo.getSnapshot().exercises[1];
+  show(<ExerciseDetail params={{id:exercise.id}}/>);
+  fireEvent.press(screen.getByRole('button',{name:'Iniciar sesión libre con este ejercicio'}));
+  await waitFor(()=>expect(repo.getSnapshot().sessions).toHaveLength(1));
+  expect(repo.getSnapshot().sessions[0].exercises[0].exerciseId).toBe(exercise.id);
+  const reopened=await new ClientRepo(disk.driver,'guest','UTC').init();
+  expect(reopened.getSnapshot().sessions[0].exercises[0].exerciseId).toBe(exercise.id);
+  await waitFor(()=>expect(navigation.router.replace).toHaveBeenCalledWith(expect.objectContaining({params:expect.objectContaining({screenId:'SC-47'})})));
+});
+
+test('creating two custom exercises on the same screen cannot overwrite the first exercise', async () => {
+  const {ExerciseLibrary} = require('../../apps/mobile/src/screens/Training');
+  show(<ExerciseLibrary params={{}}/>);
+  for(const name of ['Ejercicio personal uno','Ejercicio personal dos']) {
+    fireEvent.press(screen.getByRole('button',{name:'Crear ejercicio personalizado'}));
+    await waitFor(()=>expect(screen.getByLabelText('Nombre del ejercicio').props.value).toBe(''));
+    fireEvent.changeText(screen.getByLabelText('Nombre del ejercicio'),name);
+    await waitFor(()=>expect(screen.getByRole('button',{name:'Guardar ejercicio'}).props.accessibilityState?.disabled).not.toBe(true));
+    await act(async()=>{ await fireEvent.press(screen.getByRole('button',{name:'Guardar ejercicio'})); });
+    await waitFor(()=>expect(screen.queryByRole('button',{name:'Guardar ejercicio'})).toBeNull());
+    await waitFor(()=>expect(repo.getSnapshot().exercises.some(e=>e.name===name)).toBe(true));
+  }
+  const reopened=await new ClientRepo(disk.driver,'guest','UTC').init();
+  const custom=reopened.getSnapshot().exercises.filter(e=>e.custom);
+  expect(custom.map(e=>e.name).sort()).toEqual(['Ejercicio personal dos','Ejercicio personal uno']);
+  expect(new Set(custom.map(e=>e.id)).size).toBe(2);
+});
+
+async function completedSetWithNotification() {
+  const session=createSession(repo.getSnapshot(),undefined,0,[repo.getSnapshot().exercises[0].id]);
+  await repo.dispatch({type:'startSession',session});
+  const exercise=repo.getSnapshot().sessions[0].exercises[0];
+  await repo.dispatch({type:'set',sessionId:session.id,exerciseId:exercise.id,set:{...exercise.sets[0],load:20,reps:8},complete:true});
+  await repo.dispatch({type:'notification',sessionId:session.id,notificationId:'test-os-notification'});
+  return session.id;
+}
+
+test('a failed OS cancellation does not trap the user in rest after its deadline was cleared', async () => {
+  const id=await completedSetWithNotification();
+  const {cancelRest}=require('../../apps/mobile/src/native/notifications');
+  cancelRest.mockRejectedValueOnce(new Error('Notifications service unavailable'));
+  show(<Rest params={{id}}/>);
+  fireEvent.press(screen.getByRole('button',{name:'Continuar entrenamiento'}));
+  await waitFor(()=>expect(repo.getSnapshot().sessions[0].restDeadline).toBeNull());
+  await waitFor(()=>expect(navigation.router.dismissTo).toHaveBeenCalledWith(expect.objectContaining({params:expect.objectContaining({screenId:'SC-47',notificationWarning:'1'})})));
+  expect(repo.getSnapshot().sessions[0].restNotificationId).toBe('test-os-notification');
+  expect(repo.getSnapshot().sessions[0].exercises[0].sets[0].completedAt).toBeTruthy();
+});
+
+test('finishing a saved workout still reaches summary when the OS cannot cancel its notification', async () => {
+  const id=await completedSetWithNotification();
+  const {cancelRest}=require('../../apps/mobile/src/native/notifications');
+  cancelRest.mockRejectedValueOnce(new Error('Notifications service unavailable'));
+  show(<FinishWorkout params={{id}}/>);
+  fireEvent.changeText(screen.getByLabelText('Cómo fue la sesión, opcional'),'Sesión conservada');
+  fireEvent.press(screen.getByRole('button',{name:'Guardar y finalizar sesión'}));
+  await waitFor(()=>expect(repo.getSnapshot().sessions[0].status).toBe('completed'));
+  await waitFor(()=>expect(navigation.router.replace).toHaveBeenCalledWith(expect.objectContaining({params:expect.objectContaining({screenId:'SC-52',notificationWarning:'1'})})));
+  const reopened=await new ClientRepo(disk.driver,'guest','UTC').init();
+  expect(reopened.getSnapshot().sessions[0].note).toBe('Sesión conservada');
+  expect(reopened.getSnapshot().sessions[0].restDeadline).toBeNull();
+});
+
+test('successful notification cancellation is persisted when continuing after process recreation', async () => {
+  const id=await completedSetWithNotification();
+  repo=await new ClientRepo(disk.driver,'guest','UTC').init();
+  show(<Rest params={{id}}/>);
+  fireEvent.press(screen.getByRole('button',{name:'Continuar entrenamiento'}));
+  await waitFor(()=>expect(repo.getSnapshot().sessions[0].restNotificationId).toBeNull());
+  expect(repo.getSnapshot().sessions[0].exercises[0].sets[0].reps).toBe(8);
+  const reopened=await new ClientRepo(disk.driver,'guest','UTC').init();
+  expect(reopened.getSnapshot().sessions[0].restDeadline).toBeNull();
+  expect(reopened.getSnapshot().sessions[0].restNotificationId).toBeNull();
+});
