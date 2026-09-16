@@ -22,10 +22,14 @@ for entry in value['files']:
     seen.add(str(name))
     target = (root / str(name)).resolve()
     assert target.is_relative_to(root) and not target.is_symlink()
-    raw = target.read_bytes()
+    raw = target.read_bytes() if target.is_file() else b''
     if hashlib.sha256(raw).hexdigest() == entry['newSha256']:
         continue
-    assert hashlib.sha256(raw).hexdigest() == entry['oldSha256'], f'Input changed: {name}'
+    if entry['oldSha256'] is None:
+        assert not target.exists(), f'New path already exists: {name}'
+    else:
+        assert target.is_file(), f'Existing source missing: {name}'
+    assert entry['oldSha256'] is None or hashlib.sha256(raw).hexdigest() == entry['oldSha256'], f'Input changed: {name}'
     text = raw.decode('utf-8')
     end = len(text)
     for start, stop, replacement in reversed(entry['edits']):
@@ -38,6 +42,7 @@ for entry in value['files']:
     changes.append((target, result))
 # No source mutation until every result has been validated.
 for target, result in changes:
+    target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(result)
 patch_path.unlink()
 print(f'{len(changes)} source files updated with exact input/output checksums. App verification is separate.')
