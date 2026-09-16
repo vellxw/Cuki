@@ -1,3 +1,4 @@
+import { editorDraftKey } from '../../../../packages/core/navigation';
 import {healthWriter,healthName,healthAccountGuard} from '../native/health';
 import {exportWorkoutToHealth} from '../../../../packages/core/health-client';
 import React, { useState } from 'react';
@@ -120,7 +121,7 @@ function usePlanDraft(params: ScreenProps['params']) {
     state
   } = useApp();
   const old = state.plans.find(p => p.id === params.id);
-  return useDraft<PlanDraft>(params.draftKey ?? 'plan-editor:' + (old?.id ?? 'new'), () => old ? {
+  return useDraft<PlanDraft>(editorDraftKey('plan', params), () => old ? {
     ...old,
     weeks: String(old.weeks)
   } : newPlanDraft());

@@ -1,3 +1,4 @@
+import { editorDraftKey } from '../../../../packages/core/navigation';
 import { fetchRecipes, fetchComments } from '../data/community';
 import React, { useState } from 'react';
 import { View, Pressable, Share, StyleSheet } from 'react-native';
@@ -453,7 +454,7 @@ export function useRecipeDraft(params: ScreenProps['params']) {
     state
   } = useApp();
   const old = state.recipes.find(r => r.id === params.id);
-  const key = params.draftKey ?? 'recipe-editor:' + (old?.id ?? 'new');
+  const key = editorDraftKey('recipe', params);
   const draft = useDraft<RecipeDraft>(key, () => old ? {
     id: uid(),
     editingId: old.id,
