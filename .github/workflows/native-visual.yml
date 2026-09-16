@@ -1,0 +1,103 @@
+name: CUKI isolated native reference captures
+on:
+  push:
+    branches: [implementation/cuki-verified]
+    paths: [ci/visual-request.json, .github/workflows/native-visual.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cuki-native-visual-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  CI: '1'
+  EXPO_NO_TELEMETRY: '1'
+  EXPO_PUBLIC_TEST_MODE: '1'
+  EXPO_PUBLIC_VISUAL_FIXTURES: '1'
+  EXPO_PUBLIC_API_URL: ''
+  EXPO_PUBLIC_SUPABASE_URL: ''
+  NODE_OPTIONS: --max-old-space-size=4096
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci --no-audit --no-fund
+      - run: npm run verify -- --bundles
+      - run: cd apps/mobile && npx --no-install expo prebuild --platform android --no-install
+      - name: Build isolated visual fixture APK, never the ordinary phone release
+        run: |
+          mkdir -p artifacts/native/visual-android
+          cd apps/mobile/android
+          set -o pipefail
+          ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon --max-workers=2 --stacktrace 2>&1 | tee ../../../artifacts/native/visual-android/build.log
+      - run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          python3 -m venv /tmp/cuki-visual-driver
+          /tmp/cuki-visual-driver/bin/python -m pip install uiautomator2==3.7.0
+          echo /tmp/cuki-visual-driver/bin >> "$GITHUB_PATH"
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          script: python3 scripts/native/android-visual.py
+      - name: Preserve immutable fixture and source provenance
+        if: always()
+        run: |
+          mkdir -p artifacts/native/visual-android
+          git rev-parse HEAD > artifacts/native/visual-android/COMMIT.txt
+          git archive --format=zip HEAD > artifacts/native/visual-android/source.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cuki-visual-android-${{ github.sha }}
+          path: artifacts/native/visual-android
+          retention-days: 30
+          if-no-files-found: error
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: cd apps/mobile && npx --no-install expo prebuild --platform ios --no-install
+      - run: cd apps/mobile/ios && pod install
+      - name: Build explicit visual simulator target, without distribution credentials
+        run: |
+          mkdir -p artifacts/native/visual-ios
+          cd apps/mobile/ios
+          test -d CUKIVisual.xcworkspace
+          set -o pipefail
+          xcodebuild -workspace CUKIVisual.xcworkspace -scheme CUKIVisual -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build ARCHS=arm64 CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build 2>&1 | tee ../../../artifacts/native/visual-ios/build.log
+      - name: Capture six real native screens, not web reconstructions
+        run: python3 scripts/native/ios-visual.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cuki-visual-ios-${{ github.sha }}
+          path: artifacts/native/visual-ios
+          retention-days: 30
+          if-no-files-found: error
