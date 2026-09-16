@@ -1,7 +1,7 @@
 import { editorDraftKey } from '../../../../packages/core/navigation';
 import { fetchRecipes, fetchComments } from '../data/community';
 import React, { useState } from 'react';
-import { View, Pressable, Share, StyleSheet } from 'react-native';
+import { View, Pressable, Share, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -40,34 +40,21 @@ export function RecipeMedia({
     gap: 12
   }}><Icon name="recipes" color={c.protein} size={40} /><Txt tone="muted">Receta sin fotografía</Txt></View>;
 }
-export function RecipeCard({
-  recipe,
-  onPress,
-  compact = false
-}: {
-  recipe: Recipe;
-  onPress: () => void;
-  compact?: boolean;
-}) {
-  const {
-    state,
-    repo
-  } = useApp();
-  const task = useTask();
-  const {
-    c
-  } = useTheme();
-  return <View style={{
-    gap: 13,
-    paddingBottom: 20
-  }}><Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Ver receta ${recipe.title}`}><RecipeMedia recipe={recipe} height={compact ? 170 : 270} /><View style={{
-        gap: 5,
-        paddingTop: 14
-      }}><Txt size={compact ? 19 : 26} weight="600">{recipe.title}</Txt><Txt size={13} tone="secondary">{recipe.visibility === 'editorial' ? 'CUKI Editorial · receta original' : recipe.authorName} · {recipe.minutes > 0 ? recipe.minutes + ' min' : 'Tiempo no indicado'}</Txt></View></Pressable><MacroRow nutrients={recipeNutrition(recipe, state.foods)} /><View style={layout.between}><Button title="Ver receta" variant="quiet" onPress={onPress} /><IconButton name="save" label={`Guardar receta ${recipe.title}`} selected={state.savedRecipeIds.includes(recipe.id)} onPress={() => task.run(() => repo.dispatch({
-        type: 'toggle',
-        field: 'savedRecipeIds',
-        id: recipe.id
-      }))} /></View><Message type="error">{task.error}</Message></View>;
+export function RecipeCard({recipe,onPress,compact=false}:{recipe:Recipe;onPress:()=>void;compact?:boolean}) {
+  const {state,repo}=useApp(),task=useTask();
+  return <Glass style={{borderRadius:24,padding:7,gap:7}}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Ver receta ${recipe.title}`}>
+      <View style={{borderRadius:18,overflow:'hidden'}}>
+        <RecipeMedia recipe={recipe} height={compact?118:204}/>
+        {!compact&&<><LinearGradient pointerEvents="none" colors={['rgba(3,8,5,.48)','rgba(3,8,5,0)','rgba(3,8,5,.92)']} locations={[0,.38,1]} style={StyleSheet.absoluteFill}/>
+          <View pointerEvents="none" style={{position:'absolute',top:12,left:12,right:12}}><Txt size={12} weight="600">{recipe.visibility==='editorial'?'CUKI Editorial':recipe.authorName}</Txt></View>
+          <View pointerEvents="none" style={{position:'absolute',left:12,right:12,bottom:12,gap:4}}><Txt size={22} weight="600">{recipe.title}</Txt><Txt size={12} tone="secondary">{recipe.minutes>0?`${recipe.minutes} min`:'Tiempo no indicado'} · {recipe.visibility==='editorial'?'Receta original':'Receta de la comunidad'}</Txt></View></>}
+      </View>
+      {compact&&<View style={{gap:4,padding:7}}><Txt size={15} weight="600">{recipe.title}</Txt><Txt size={11} tone="secondary">{recipe.minutes} min · {fmt(recipeNutrition(recipe,state.foods).protein)} g de proteína</Txt></View>}
+    </Pressable>
+    {!compact&&<View style={{flexDirection:'row',alignItems:'center',gap:5,paddingLeft:8}}><View style={{flex:1}}><MacroRow nutrients={recipeNutrition(recipe,state.foods)}/></View><IconButton name="save" label={`Guardar receta ${recipe.title}`} selected={state.savedRecipeIds.includes(recipe.id)} onPress={()=>task.run(()=>repo.dispatch({type:'toggle',field:'savedRecipeIds',id:recipe.id}))}/></View>}
+    <Message type="error">{task.error}</Message>
+  </Glass>;
 }
 interface RecipeFilters {
   exclude: string;
@@ -103,7 +90,7 @@ export function RecipesHome() {
   const nav = useNav();
   const [f, setF] = useState('all');
   const recipes = state.recipes.filter(r => !state.blockedIds.includes(r.authorId)).filter(r => f === 'quick' ? r.minutes <= 20 : f === 'saved' ? state.savedRecipeIds.includes(r.id) : true);
-  return <Screen back={false} dock={false} tab="recipes" background testID="SC-23"><Title>Recetas</Title><Txt tone="secondary">Cociná. Compartí. Inspirá.</Txt><Button title="Buscar recetas e ingredientes" icon="search" variant="secondary" onPress={() => nav.go('SC-24')} /><Chips options={[{
+  return <Screen back={false} dock={false} tab="recipes" background testID="SC-23" contentStyle={{gap:12}}><Title>Recetas</Title><Txt size={12} tone="secondary" style={{marginTop:-5}}>Cociná. Compartí. Inspirá.</Txt><Button title="Buscar recetas e ingredientes" icon="search" variant="secondary" onPress={() => nav.go('SC-24')} /><Chips options={[{
       value: 'all',
       label: 'Para descubrir'
     }, {
@@ -114,9 +101,7 @@ export function RecipesHome() {
       label: 'Guardadas'
     }]} value={f} onChange={setF} />{recipes[0] ? <RecipeCard recipe={recipes[0]} onPress={() => nav.go('SC-26', {
       id: recipes[0].id
-    })} /> : <Empty title="Armá tu colección" detail="Guardá recetas para encontrarlas aquí." />}<Button title="Actualizar recetas de la comunidad" variant="quiet" busy={refreshTask.busy} onPress={() => refreshTask.run(() => fetchRecipes(api, repo))} /><Message type="error">{refreshTask.error}</Message><Section title="Más para vos" action="Ver todas" onAction={() => nav.go('SC-24')}>{recipes.slice(1, 4).map(r => <RecipeCard key={r.id} compact recipe={r} onPress={() => nav.go('SC-26', {
-        id: r.id
-      })} />)}</Section><Button title="Crear mi receta" icon="plus" onPress={() => nav.go('SC-32')} /><Button title="Mis colecciones" variant="quiet" onPress={() => nav.go('SC-31')} /><View style={{
+    })} /> : <Empty title="Armá tu colección" detail="Guardá recetas para encontrarlas aquí." />}<Section title="Para vos" action="Ver todas" onAction={()=>nav.go('SC-24')}><ScrollView horizontal showsHorizontalScrollIndicator={false} style={{flexGrow:0,flexShrink:0}} contentContainerStyle={{gap:10,alignItems:'flex-start'}}>{recipes.slice(1,5).map(r=><View key={r.id} style={{width:164}}><RecipeCard compact recipe={r} onPress={()=>nav.go('SC-26',{id:r.id})}/></View>)}</ScrollView></Section><Button title="Actualizar recetas de la comunidad" variant="quiet" busy={refreshTask.busy} onPress={() => refreshTask.run(() => fetchRecipes(api, repo))} /><Message type="error">{refreshTask.error}</Message><Button title="Crear mi receta" icon="plus" onPress={() => nav.go('SC-32')} /><Button title="Mis colecciones" variant="quiet" onPress={() => nav.go('SC-31')} /><View style={{
       height: 90
     }} /></Screen>;
 }
@@ -188,30 +173,39 @@ export function RecipeDetail({
   const r = state.recipes.find(r => r.id === params.id);
   const [tab, setTab] = useState('ingredients');
   const [portion, setPortion] = useState(1);
+  const [aboutOpen,setAboutOpen]=useState(false);
+  const {c}=useTheme();
+  const {fontScale,width}=useWindowDimensions();
+  const stackActions=fontScale>1.3||width<350;
   if (!r) return <Screen title="Receta" tab="recipes"><Empty title="Receta no disponible" detail="El registro de una receta retirada se conserva en tu diario." action="Buscar" onPress={() => nav.replace('SC-24')} /></Screen>;
   const nutrition = recipeNutrition(r, state.foods, portion);
   const comments = state.comments.filter(c => c.recipeId === r.id && c.state !== 'deleted' && !state.blockedIds.includes(c.authorId));
-  return <Screen title={r.title} tab="recipes" background testID="SC-26" headerRight={<View style={layout.row}><IconButton name="save" label="Guardar receta" selected={state.savedRecipeIds.includes(r.id)} onPress={() => task.run(() => repo.dispatch({
-      type: 'toggle',
-      field: 'savedRecipeIds',
-      id: r.id
-    }))} /><IconButton name="share" label="Compartir receta" onPress={() => Share.share({
-      title: r.title,
-      message: `${r.title}\n${r.description}\n${r.ingredients.map(i => `${state.foods.find(f => f.id === i.foodId)?.name}: ${fmt(i.grams, 1)} ${state.foods.find(f => f.id === i.foodId)?.basis === 'per_100ml' ? 'ml' : 'g'}`).join('\n')}\n${r.steps.map((s, i) => `${i + 1}. ${s.text}`).join('\n')}`
-    })} /></View>}><RecipeMedia recipe={r} height={290} /><Row title={r.authorName} subtitle={r.visibility === 'editorial' ? 'Receta original de CUKI · sin votos simulados' : r.visibility === 'private' ? 'Receta privada' : r.visibility === 'pending' ? 'Pendiente de sincronización o revisión' : 'Publicación comunitaria'} onPress={() => nav.go('SC-30', {
-      authorId: r.authorId
-    })} /><Txt tone="secondary">{r.description}</Txt><Glass style={{
-      padding: 16
-    }}><MacroRow nutrients={nutrition} /></Glass><Glass style={{
-      padding: 10
-    }}><View style={[layout.between, {
-        flexWrap: 'wrap'
-      }]}><View style={layout.row}><IconButton name="back" label="Reducir porción" onPress={() => setPortion(v => Math.max(.25, v - .25))} /><Txt>{fmt(portion, 2)} porciones</Txt><IconButton name="plus" label="Aumentar porción" onPress={() => setPortion(v => v + .25)} /></View><Button title="Registrar" accessibilityLabel="Registrar esta receta" onPress={() => nav.go('SC-12', {
-          recipeId: r.id,
-          servings: String(portion),
-          date: params.date,
-          meal: params.meal
-        })} /></View></Glass><Segments options={[{
+  return <Screen back={false} tab="recipes" background testID="SC-26" contentStyle={{gap:10}}>
+    <View style={{borderRadius:26,overflow:'hidden'}}>
+      <RecipeMedia recipe={r} height={260*Math.min(fontScale,1.5)}/>
+      <LinearGradient pointerEvents="none" colors={['rgba(3,8,5,.5)','rgba(3,8,5,.04)','rgba(3,8,5,.95)']} locations={[0,.30,1]} style={StyleSheet.absoluteFill}/>
+      <View style={{position:'absolute',top:3,left:3,right:3,flexDirection:'row',justifyContent:'space-between'}}>
+        <IconButton name="back" label="Volver" onPress={nav.back}/>
+        <View style={{flexDirection:'row'}}><IconButton name="save" label="Guardar receta" selected={state.savedRecipeIds.includes(r.id)} onPress={()=>task.run(()=>repo.dispatch({type:'toggle',field:'savedRecipeIds',id:r.id}))}/>
+          <IconButton name="share" label="Compartir receta" onPress={()=>Share.share({title:r.title,message:[r.title,r.description,...r.ingredients.map(i=>{const f=i.snapshot??state.foods.find(f=>f.id===i.foodId);return `${f?.name??'Ingrediente'}: ${fmt(i.grams,1)} ${f?.basis==='per_100ml'?'ml':'g'}`}),...r.steps.map((step,i)=>`${i+1}. ${step.text}`)].join('\n')})}/></View>
+      </View>
+      <View style={{position:'absolute',bottom:12,left:14,right:14,gap:7}}>
+        <Txt size={25} weight="600" style={{maxWidth:'90%'}}>{r.title}</Txt>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Ver autor ${r.authorName}`} onPress={()=>nav.go('SC-30',{authorId:r.authorId})} style={{minHeight:32,justifyContent:'center'}}>
+          <Txt size={12} weight="500">{r.authorName}</Txt>
+          <Txt size={10} tone="secondary">{r.visibility==='editorial'?'Receta original de CUKI':r.visibility==='private'?'Receta privada':r.visibility==='pending'?'Pendiente de revisión':'Publicación comunitaria'}</Txt>
+        </Pressable>
+        <Glass style={{paddingVertical:9,paddingHorizontal:11,borderRadius:16}}><MacroRow nutrients={nutrition}/></Glass>
+      </View>
+    </View>
+    <View testID="recipe-registration-bar" style={{flexDirection:stackActions?'column':'row',alignItems:stackActions?'stretch':'center',gap:8}}>
+      <Glass style={{flex:stackActions?undefined:1,borderRadius:25}}><View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
+        <IconButton name="back" label="Reducir porción" onPress={()=>setPortion(v=>Math.max(.25,v-.25))}/>
+        <Txt size={13} style={{flex:1,textAlign:'center'}}>{fmt(portion,2)} {portion===1?'porción':'porciones'}</Txt>
+        <IconButton name="plus" label="Aumentar porción" onPress={()=>setPortion(v=>v+.25)}/>
+      </View></Glass>
+      <Button title="Registrar" compact icon="plus" accessibilityLabel="Registrar esta receta" style={{width:stackActions?'100%':137}} onPress={()=>nav.go('SC-12',{recipeId:r.id,servings:String(portion),date:params.date,meal:params.meal})}/>
+    </View><Segments options={[{
       value: 'ingredients',
       label: 'Ingredientes'
     }, {
@@ -220,16 +214,17 @@ export function RecipeDetail({
     }, {
       value: 'comments',
       label: 'Comentarios'
-    }]} value={tab} onChange={setTab} />{tab === 'ingredients' ? <>{r.ingredients.map(i => {
-        const f = state.foods.find(f => f.id === i.foodId);
-        return <Row key={i.id} title={f?.name ?? 'Fuente desconocida'} subtitle={f?.preparation === 'cooked' ? 'Cantidad del alimento cocido' : f?.preparation === 'raw' ? 'Cantidad del alimento crudo' : undefined} trailing={<Txt>{fmt(i.grams * portion / r.servings, 1)} {f?.basis === 'per_100ml' ? 'ml' : 'g'}</Txt>} onPress={() => nav.go('SC-11', {
-          foodId: i.foodId
-        })} />;
-      })}<Message>Cantidades para {fmt(portion, 2)} porciones; receta completa: {r.servings} porciones{r.cookedYield ? `, rendimiento ${r.cookedYield} g` : ''}.</Message></> : tab === 'steps' ? <>{r.steps.map((s, i) => <Card key={s.id}><Txt weight="600">Paso {i + 1}</Txt><Txt>{s.text}</Txt>{s.seconds !== null && <Txt size={13} tone="secondary">Temporizador: {duration(s.seconds)}</Txt>}</Card>)}<Button title="Empezar modo cocina" icon="play" onPress={() => nav.go('SC-27', {
+    }]} value={tab} onChange={setTab} />{tab === 'ingredients' ? <><View>{r.ingredients.map(i=>{
+      const f=i.snapshot??state.foods.find(f=>f.id===i.foodId&&(!i.foodVersion||f.version===i.foodVersion));
+      return <Pressable key={i.id} accessibilityRole="button" accessibilityLabel={`${f?.name??'Fuente desconocida'}, ${fmt(i.grams*portion/r.servings,1)} ${f?.basis==='per_100ml'?'ml':'g'}`} onPress={()=>nav.go('SC-11',{foodId:i.foodId})} style={{flexDirection:'row',gap:12,alignItems:'center',minHeight:44,borderBottomWidth:StyleSheet.hairlineWidth,borderColor:c.line,paddingVertical:6}}>
+        <View style={{flex:1,gap:1}}><Txt size={14} weight="500">{f?.name??'Fuente desconocida'}</Txt>{f&&f.preparation!=='as_sold'&&<Txt size={10} tone="secondary">{f.preparation==='cooked'?'Peso cocido':'Peso crudo'}</Txt>}</View>
+        <Txt size={13} tone="secondary">{fmt(i.grams*portion/r.servings,1)} {f?.basis==='per_100ml'?'ml':'g'}</Txt><Icon name="chevron" size={13}/>
+      </Pressable>;
+    })}</View><Message>Cantidades para {fmt(portion, 2)} porciones; receta completa: {r.servings} porciones{r.cookedYield ? `, rendimiento ${r.cookedYield} g` : ''}.</Message></> : tab === 'steps' ? <>{r.steps.map((s, i) => <Card key={s.id}><Txt weight="600">Paso {i + 1}</Txt><Txt>{s.text}</Txt>{s.seconds !== null && <Txt size={13} tone="secondary">Temporizador: {duration(s.seconds)}</Txt>}</Card>)}<Button title="Empezar modo cocina" icon="play" onPress={() => nav.go('SC-27', {
         id: r.id
       })} /></> : <><Txt>{comments.length} comentarios disponibles</Txt>{comments.slice(0, 2).map(c => <Card key={c.id}><Txt weight="600">{c.authorName}</Txt><Txt>{c.text}</Txt><Txt size={12} tone="muted">{c.state === 'public' ? 'Publicado' : 'Pendiente de envío'}</Txt></Card>)}<Button title="Abrir comentarios" icon="comment" onPress={() => nav.go('SC-29', {
         id: r.id
-      })} /></>}<View style={layout.wrap}><Button title={state.votedRecipeIds.includes(r.id) ? 'Voto guardado' : 'Votar receta'} icon="up" variant="secondary" onPress={() => identity ? task.run(() => repo.dispatch({
+      })} /></>}<Button title={aboutOpen?"Ocultar descripción":"Acerca de esta receta"} variant="quiet" onPress={()=>setAboutOpen(!aboutOpen)}/>{aboutOpen&&<Txt tone="secondary">{r.description}</Txt>}<View style={layout.wrap}><Button title={state.votedRecipeIds.includes(r.id) ? 'Voto guardado' : 'Votar receta'} icon="up" variant="secondary" onPress={() => identity ? task.run(() => repo.dispatch({
         type: 'toggle',
         field: 'votedRecipeIds',
         id: r.id
