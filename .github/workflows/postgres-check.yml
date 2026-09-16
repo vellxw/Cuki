@@ -1,0 +1,62 @@
+name: CUKI PostgreSQL integration
+on:
+  push:
+    branches: [implementation/cuki-verified]
+    paths: [.github/workflows/postgres-check.yml, ci/postgres-request.json]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: cuki-ci-only-not-a-production-password
+          POSTGRES_DB: cuki_integration
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cuki_integration"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:cuki-ci-only-not-a-production-password@127.0.0.1:5432/cuki_integration
+      APP_ENV: test
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - name: Run actual PostgreSQL authorization, durability and concurrency tests
+        run: |
+          mkdir -p artifacts/postgres
+          node --input-type=module - <<'JS'
+          import {Pool} from 'pg';
+          import {writeFileSync} from 'node:fs';
+          const pool=new Pool({connectionString:process.env.DATABASE_URL});
+          const result=await pool.query('SELECT version() AS version');
+          writeFileSync('artifacts/postgres/environment.json',JSON.stringify({sourceCommit:process.env.GITHUB_SHA,engine:result.rows[0].version,transport:'PostgreSQL TCP, not an in-memory adapter',scope:'API/SQL integration with fixture providers; not store/AI production validation'},null,2));
+          await pool.end();
+          JS
+          set -o pipefail
+          npm run test:integration 2>&1 | tee artifacts/postgres/tests.log
+      - name: Preserve source identity
+        if: always()
+        run: |
+          mkdir -p artifacts/postgres
+          git rev-parse HEAD > artifacts/postgres/COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cuki-postgres-${{ github.sha }}
+          path: artifacts/postgres
+          retention-days: 30
+          if-no-files-found: error
