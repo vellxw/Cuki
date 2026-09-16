@@ -12,6 +12,7 @@ _spec = importlib.util.spec_from_file_location('dialogs', pathlib.Path(__file__)
 _dialogs = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_dialogs)
 infra_events = []
+_hierarchy_reader = None
 
 
 def recover_launcher_dialog(xml):
@@ -38,8 +39,16 @@ def adb(*args, binary=False):
 
 
 def hierarchy():
-    adb('shell', 'uiautomator', 'dump', '/sdcard/cuki-test-window.xml')
-    return adb('shell', 'cat', '/sdcard/cuki-test-window.xml')
+    global _hierarchy_reader
+    if _hierarchy_reader is None:
+        # The CLI's idle wait fails while a workout timer updates. It returns exit 0
+        # and leaves the previous XML on disk. Use a fresh native instrumentation
+        # snapshot with no idle requirement; never change or pause the app's timer.
+        spec = importlib.util.spec_from_file_location('fresh_hierarchy', pathlib.Path(__file__).with_name('android-hierarchy.py'))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _hierarchy_reader = module.NativeHierarchyReader(OUTPUT)
+    return _hierarchy_reader.read()
 
 
 def matches(node, identifier):

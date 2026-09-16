@@ -30,7 +30,7 @@ final class CUKISmokeTests: XCTestCase {
             else { surface.swipeUp() }
         }
     }
-    private func fill(_ id: String, _ value: String, file: StaticString = #filePath, line: UInt = #line) {
+    private func editableInput(_ id: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         // The visible label and native input share their accessible name. Query the
         // actual editable element instead of typing into the first matching StaticText.
         let editable = NSPredicate(format:
@@ -39,6 +39,10 @@ final class CUKISmokeTests: XCTestCase {
             Int(XCUIElement.ElementType.textView.rawValue), id, id)
         let item = app.descendants(matching: .any).matching(editable).firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 40), "Missing editable input: \(id)", file: file, line: line)
+        return item
+    }
+    private func fill(_ id: String, _ value: String, file: StaticString = #filePath, line: UInt = #line) {
+        let item = editableInput(id, file: file, line: line)
         makeHittable(item)
         XCTAssertTrue(item.isHittable, "Input not hittable: \(id)", file: file, line: line)
         item.tap()
@@ -91,7 +95,7 @@ final class CUKISmokeTests: XCTestCase {
         let title = "Pechuga de pollo asada"
         tap(title)
         tap("food-portion")
-        let amount = node("portion-amount")
+        let amount = editableInput("portion-amount")
         XCTAssertEqual(amount.value as? String, "100")
         tap("portion-save"); _ = node("Abrir diario de nutrición")
         tap("Abrir diario de nutrición"); _ = node(title); capture("06-saved-food")
