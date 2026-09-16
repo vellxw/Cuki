@@ -10,8 +10,9 @@ import {sqlite} from '../support/sqlite';
 import {Portion, FoodSearch, FoodDetail, PhotoCapture} from '../../apps/mobile/src/screens/Foods';
 import {ActiveWorkout, Rest, FinishWorkout, PlanEditor} from '../../apps/mobile/src/screens/Training';
 import {Home} from '../../apps/mobile/src/screens/Home';
+import {Goals} from '../../apps/mobile/src/screens/Onboarding';
 import {createSession} from '../../packages/core/state';
-import {entryFromFood, recipeNutrition} from '../../packages/core/utils';
+import {entryFromFood, recipeNutrition, goalAt} from '../../packages/core/utils';
 
 jest.mock('expo-crypto', () => ({randomUUID: () => require('node:crypto').randomUUID()}));
 jest.mock('../../apps/mobile/src/data/storage', () => ({getDriver: () => { throw Error('Native driver is not exercised in component tests'); }}));
@@ -229,4 +230,20 @@ test('Home macro progress uses actual amounts and the effective goal, not decora
  const bars=screen.getAllByRole('progressbar');expect(bars.map(b=>b.props.accessibilityValue.now)).toEqual([0,0,0]);
  expect(bars.map(b=>b.props.accessibilityValue.max)).toEqual([150,200,60]);
  expect(screen.queryByRole('button',{name:'Configurar metas opcionales'})).toBeNull();
+});
+
+test('editing targets twice on the same day displays and persists the latest target', async () => {
+  const first = show(<Goals params={{}}/>);
+  fireEvent.changeText(screen.getByLabelText('Calorías diarias, opcional'), '2000');
+  fireEvent.press(screen.getByRole('button', { name: 'Guardar metas' }));
+  await waitFor(() => expect(repo.getSnapshot().goals).toHaveLength(1));
+  first.unmount();
+  show(<Goals params={{}}/>);
+  expect(screen.getByLabelText('Calorías diarias, opcional').props.value).toBe('2000');
+  fireEvent.changeText(screen.getByLabelText('Calorías diarias, opcional'), '2250');
+  fireEvent.press(screen.getByRole('button', { name: 'Guardar metas' }));
+  await waitFor(() => expect(repo.getSnapshot().goals).toHaveLength(2));
+  expect(goalAt(repo.getSnapshot())?.energy).toBe(2250);
+  const reopened = await new ClientRepo(disk.driver, 'guest', 'UTC').init();
+  expect(goalAt(reopened.getSnapshot())?.energy).toBe(2250);
 });

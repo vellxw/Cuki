@@ -15,7 +15,19 @@ export function localDate(now=new Date(),zone?:string){const parts=new Intl.Date
 export function validDate(s:string){if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const d=new Date(s+'T12:00:00Z');return Number.isFinite(+d)&&d.toISOString().slice(0,10)===s}
 export const prettyDate=(s:string)=>validDate(s)?new Date(s+'T12:00:00Z').toLocaleDateString('es-AR',{day:'numeric',month:'short',timeZone:'UTC'}):s;
 export const instantLabel=(s:string)=>Number.isFinite(Date.parse(s))?new Date(s).toLocaleString('es-AR'):'Fecha no disponible';
-export function goalAt(goals:Goal[]|AppState,date?:string):Goal|null{const list=Array.isArray(goals)?goals:goals.goals;const at=date??(!Array.isArray(goals)?goals.selectedDate:localDate());return [...list].filter(g=>g.effectiveFrom<=at).sort((a,b)=>b.effectiveFrom.localeCompare(a.effectiveFrom)||b.version-a.version)[0]??null}
+/** The effective date selects the day; modification time selects revisions of THAT day.
+ * Entity version is a sync conflict counter, not chronology across unrelated goal IDs.
+ * Older snapshots without updatedAt remain readable. Equal-time concurrent goals use
+ * a deterministic tie-breaker, so download/array order cannot change the active goal.
+ */
+export function goalAt(goals:Goal[]|AppState,date?:string):Goal|null {
+ const list=Array.isArray(goals)?goals:goals.goals;
+ const at=date??(!Array.isArray(goals)?goals.selectedDate:localDate());
+ const stamp=(g:Goal)=>{const time=Date.parse(g.updatedAt??'');return Number.isFinite(time)?time:0};
+ return [...list].filter(g=>g.effectiveFrom<=at).sort((a,b)=>
+  b.effectiveFrom.localeCompare(a.effectiveFrom)||stamp(b)-stamp(a)||b.version-a.version||b.id.localeCompare(a.id)
+ )[0]??null;
+}
 export function dayNutrition(state:AppState,date=state.selectedDate){return sumNutrients(state.diary.filter(e=>e.date===date&&!e.deletedAt).map(e=>e.nutrition))}
 export function duration(seconds:number){const n=Math.max(0,Math.floor(seconds));return n>=3600?`${Math.floor(n/3600)}:${String(Math.floor(n/60)%60).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`:`${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`}
 export function sessionSeconds(s:WorkoutSession,now=Date.now()){return Math.max(0,((s.endedAt?Date.parse(s.endedAt):s.pausedAt?Date.parse(s.pausedAt):now)-Date.parse(s.startedAt))/1000-s.pausedSeconds)}

@@ -155,7 +155,7 @@ def tap_scrolled(identifier):
 def run_guest_suite():
     report = {'package': PACKAGE, 'sourceCommit': os.environ.get('CUKI_BINARY_SOURCE_SHA') or os.environ.get('GITHUB_SHA'),
               'harnessCommit': os.environ.get('GITHUB_SHA'), 'checks': [],
-              'startedAt': time.time(), 'infrastructureEvents': infra_events, 'scope': 'native guest navigation, food persistence and superset workout recovery; not visual-fidelity or provider approval'}
+              'startedAt': time.time(), 'infrastructureEvents': infra_events, 'scope': 'native guest navigation, food and recipe persistence, target revisions and superset workout recovery; not visual-fidelity or provider approval'}
     try:
         apk = pathlib.Path('apps/mobile/android/app/build/outputs/apk/release/app-release.apk')
         if not apk.is_file():
@@ -227,6 +227,33 @@ def run_guest_suite():
         wait_node('2 series de trabajo / actividades válidas')
         wait_node('Persistencia QA sin red'); capture('09-durable-workout-summary')
         report['checks'].append('superset-rest-survives-offline-process-death-and-completes-two-real-sets')
+        # Exercise manual targets through the same screen a user edits, twice in one day.
+        tap_scrolled('Volver a Hoy'); wait_node('SC-07')
+        tap('Abrir perfil y ajustes'); wait_node('SC-68'); tap_scrolled('Mis metas'); wait_node('SC-04')
+        fill('Calorías diarias, opcional', '2000'); tap_scrolled('Guardar metas'); wait_node('SC-68')
+        tap_scrolled('Mis metas'); wait_node('SC-04')
+        assert wait_node('Calorías diarias, opcional', predicate=lambda n: n.get('class') == 'android.widget.EditText').get('text') == '2000'
+        fill('Calorías diarias, opcional', '2250'); tap_scrolled('Guardar metas'); wait_node('SC-68')
+        adb('shell', 'am', 'force-stop', PACKAGE); launch(); wait_node('SC-07')
+        tap('Abrir perfil y ajustes'); wait_node('SC-68'); tap_scrolled('Mis metas'); wait_node('SC-04')
+        assert wait_node('Calorías diarias, opcional', predicate=lambda n: n.get('class') == 'android.widget.EditText').get('text') == '2250'
+        capture('10-latest-goal-after-restart')
+        report['checks'].append('second-same-day-target-persists-after-native-process-restart')
+        tap_scrolled('Continuar sin metas'); wait_node('SC-68'); tap_scrolled('Volver'); wait_node('SC-07')
+        tap('nav-recipes'); wait_node('SC-23')
+        recipe = 'Bowl de pollo, arroz y palta'
+        tap_scrolled('Ver receta ' + recipe); wait_node('SC-26'); capture('11-recipe-detail')
+        tap_scrolled('Registrar esta receta'); wait_node('SC-12')
+        fill('portion-amount', '0.5'); tap_scrolled('portion-save'); wait_node('SC-26')
+        tap_scrolled('Volver'); wait_node('SC-23'); tap('nav-home'); wait_node('SC-07')
+        tap('Abrir diario de nutrición'); wait_node('SC-08'); tap_scrolled(recipe); wait_node('SC-12')
+        assert wait_node('portion-amount').get('text') == '0.5'
+        fill('portion-amount', '0.75'); tap_scrolled('portion-save'); wait_node('SC-08')
+        tap_scrolled(recipe); wait_node('SC-12'); assert wait_node('portion-amount').get('text') == '0.75'
+        capture('12-recipe-portion-edited'); tap_scrolled('Volver'); wait_node('SC-08')
+        entries = [n for n in ET.fromstring(hierarchy()).iter('node') if matches(n, recipe) and n.get('clickable') == 'true']
+        assert len(entries) == 1, 'Editing a recipe portion duplicated its diary entry'
+        report['checks'].append('recipe-to-half-portion-returns-to-detail-and-edit-does-not-duplicate')
         report['passed'] = True
     except Exception as error:
         report['passed'] = False; report['error'] = str(error)

@@ -7,7 +7,7 @@ export interface Recipe {id:string; version:number; title:string;description:str
 export type Meal='breakfast'|'lunch'|'snack'|'dinner';
 export const MEALS:Record<Meal,string>={breakfast:'Desayuno',lunch:'Almuerzo',snack:'Merienda',dinner:'Cena'};
 export interface DiaryEntry {id:string;version:number;date:string;timezone:string;meal:Meal;name:string;foodId?:string;recipeId?:string;sourceVersion:number;amount:number;unit:'g'|'ml'|'serving';basis?:string;nutrition:Nutrients;snapshot:{foods:Food[];recipe?:Recipe};createdAt:string;deletedAt:string|null}
-export interface Goal {id:string;version:number;effectiveFrom:string;energy:number|null;protein:number|null;carbs:number|null;fat:number|null}
+export interface Goal {id:string;version:number;effectiveFrom:string;updatedAt?:string;energy:number|null;protein:number|null;carbs:number|null;fat:number|null}
 export interface Profile {name:string;timezone:string;units:'metric'|'imperial';showCalories:boolean;hideGarden:boolean;reminders:boolean;theme:'dark'|'light'|'system';reduceMotion:boolean;reduceTransparency:boolean;onboarded:boolean;intention:string;allergies:string[];excluded:string[];equipment:string[];days:number;consentVersion:string|null;weeklyReviewEnabled?:boolean}
 export type LoadMode='external_total'|'external_per_side'|'bodyweight'|'assisted'|'time'|'distance';
 export type SetKind='working'|'warmup'|'drop'|'timed'|'distance';

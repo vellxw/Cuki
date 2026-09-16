@@ -31,6 +31,9 @@ export async function push(db:Database,actor:Actor,body:unknown,now=new Date()){
     let p:Record<string,any>;
     if(op.deleted){need(current,'No existe el registro que querés borrar.',404);p={...current.payload};if(type==='diary')p.deletedAt=op.createdAt;if(type==='comment')p.state='deleted';}
     else {p=entitySchemas[type].parse(op.payload) as Record<string,any>;need(!('id'in p)||p.id===op.entityId,'Identificador inconsistente.');
+     // Preserve the validated operation time, not arrival order or a client-supplied
+     // payload timestamp. Offline goals can arrive after newer goals of the same day.
+     if(type==='goal')p.updatedAt=op.createdAt;
      if(type==='food'){need(!catalog.some(f=>f.id===eid),'Creá una copia privada de la fuente editorial.');need(['private','pending'].includes(p.state),'No podés verificar un producto desde el cliente.',403);p.ownerId=actor.id;}
      if(type==='recipe'){need(!editorial.some(r=>r.id===eid),'Creá una copia privada de la receta editorial.');need(p.authorId===actor.id&&['private','pending'].includes(p.visibility),'Publicación no autorizada.',403);recipeNutrition(p as Recipe,[]);for(const mediaId of p.assetIds??[]){need((await tx.query("SELECT id FROM media WHERE id=$1 AND actor_id=$2 AND state='ready'",[mediaId,actor.id])).rows.length,'El medio no pertenece a la cuenta.',403);}p.photoUri=null;delete p.upvotes;}
      if(type==='comment'){need(p.authorId===actor.id,'Autor inválido.',403);need(actor.verified,'Confirmá tu correo para comentar.',403);need(await readableRecipe(tx,p.recipeId),'Receta no disponible.',404);p.state='pending';if(p.parentId){const parent=(await tx.query<Entity>("SELECT * FROM entities WHERE entity_type='comment' AND id=$1 AND NOT deleted",[p.parentId])).rows[0];need(parent&&parent.payload.recipeId===p.recipeId,'Comentario padre no disponible.',404);}}
