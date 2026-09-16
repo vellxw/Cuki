@@ -267,3 +267,52 @@ test('an actual remote load change is presented as a conflict without discarding
  fireEvent.press(screen.getByRole('button',{name:'Completar serie'}));await waitFor(()=>expect(screen.getByText(/La serie cambió/)).toBeTruthy());
  expect(screen.getByLabelText('Carga kg').props.value).toBe('22');expect(repo.getSnapshot().sessions[0].exercises[0].sets[0].completedAt).toBeNull();
 });
+
+test('editorial recipe portions stay native, recalculate and reach the real logger without an early write',async()=>{
+ const {RecipeDetail}=require('../../apps/mobile/src/screens/Recipes');
+ const r=repo.getSnapshot().recipes[0];
+ show(<RecipeDetail params={{id:r.id}}/>);
+ expect(screen.getByTestId('recipe-registration-bar')).toBeTruthy();
+ fireEvent.press(screen.getByRole('button',{name:'Aumentar porción'}));
+ fireEvent.press(screen.getByRole('button',{name:'Registrar esta receta'}));
+ expect(navigation.router.push).toHaveBeenLastCalledWith(expect.objectContaining({params:expect.objectContaining({screenId:'SC-12',recipeId:r.id,servings:'1.25'})}));
+ expect(repo.getSnapshot().diary).toHaveLength(0);
+});
+test('scan review uses the original image and cannot record food before explicit review',async()=>{
+ const {ScanReview}=require('../../apps/mobile/src/screens/Foods');
+ const food=repo.getSnapshot().foods[0];const id=require('node:crypto').randomUUID();
+ await repo.dispatch({type:'job',job:{id,route:'photo',state:'review',createdAt:new Date().toISOString(),mediaUri:'file:///private/actual-photo.jpg',input:'',ingredients:[{id:'ingredient-1',name:food.name,foodId:food.id,amount:125,unit:food.basis==='per_100ml'?'ml':'g',note:'Estimación editable'}],result:null,error:null}});
+ const params={jobId:id,returnTo:'/recipes?q=pollo'};
+ show(<ScanReview params={params}/>,params);
+ expect(screen.getByLabelText('Tu foto original de la comida').props.source.uri).toBe('file:///private/actual-photo.jpg');
+ expect(screen.getByTestId('scan-register').props.accessibilityState.disabled).toBe(true);
+ fireEvent.press(screen.getByTestId('scan-register'));
+ expect(repo.getSnapshot().diary).toHaveLength(0);
+ fireEvent(screen.getByRole('switch',{name:'Revisé cantidades, aceites y salsas'}),'valueChange',true);
+ await waitFor(()=>expect(screen.getByTestId('scan-register').props.accessibilityState.disabled).toBe(false));
+ fireEvent.press(screen.getByTestId('scan-register'));
+ await waitFor(()=>expect(repo.getSnapshot().jobs.find(j=>j.id===id)!.state).toBe('applied'));
+ await waitFor(()=>expect(navigation.router.dismissTo).toHaveBeenCalledWith('/recipes?q=pollo'));
+ const reopened=await new ClientRepo(disk.driver,'guest','UTC').init();
+ expect(reopened.getSnapshot().diary).toHaveLength(1);
+ expect(reopened.getSnapshot().diary[0].nutrition.energy).toBeCloseTo(food.nutrients.energy!*1.25);
+ fireEvent.press(screen.getByTestId('scan-register'));
+ expect(repo.getSnapshot().diary).toHaveLength(1);
+});
+test('compact workout disclosure never drops the hidden sets from the session',async()=>{
+ const {blankSet}=require('../../packages/core/state');
+ const exercise=repo.getSnapshot().exercises[0];
+ const session=createSession(repo.getSnapshot(),undefined,0,[exercise.id]);
+ await repo.dispatch({type:'startSession',session});
+ const ex=session.exercises[0];
+ while(repo.getSnapshot().sessions[0].exercises[0].sets.length<7)
+  await repo.dispatch({type:'set',sessionId:session.id,exerciseId:ex.id,set:blankSet(exercise,20)});
+ show(<ActiveWorkout params={{id:session.id}}/>);
+ expect(screen.getByTestId('workout-set-table')).toBeTruthy();
+ expect(screen.getAllByRole('button',{name:/^Editar serie /})).toHaveLength(3);
+ fireEvent.press(screen.getByRole('button',{name:'Ver las 7 series'}));
+ expect(screen.getAllByRole('button',{name:/^Editar serie /})).toHaveLength(6);
+ fireEvent.press(screen.getByRole('button',{name:'Ver la serie actual'}));
+ expect(screen.getAllByRole('button',{name:/^Editar serie /})).toHaveLength(3);
+ expect(repo.getSnapshot().sessions[0].exercises[0].sets).toHaveLength(7);
+});

@@ -34,3 +34,76 @@ test('real reward state machine is idempotent and holds a timeout reservation fo
 test('webhook authorization, duplicate suppression and authoritative reconciliation',async()=>{const a=await user(),event={event:{id:uid(),type:'RENEWAL',app_user_id:a.id}};await assert.rejects(()=>recordWebhook(db,service.auth.config,'wrong',event,clock));const accepted=await recordWebhook(db,service.auth.config,'test-only-webhook-authorization',event,clock);assert.equal(accepted.duplicate,false);assert.equal((await recordWebhook(db,service.auth.config,'test-only-webhook-authorization',event,clock)).duplicate,true);const provider:BillingProvider={configured:true,async read(){return{plan:'plus',state:'active',store:'play_store',startAt:clock.toISOString(),endAt:new Date(+clock+86400000).toISOString(),verifiedAt:clock.toISOString()};},async grant(){throw Error('not used')}};await reconcileBilling(db,provider,clock);assert.equal((await entitlement(db,a,clock)).plan,'plus');});
 test('privacy export contains only the actor data and deletion removes storage plus authorization',async()=>{const a=await user(),b=await user();await commands(a,initialState(a.id,'UTC',clock.toISOString()),[{type:'profile',profile:{name:'Export owner'}}]);await commands(b,initialState(b.id,'UTC',clock.toISOString()),[{type:'profile',profile:{name:'Other private name'}}]);const job=await service.privacy.request(a,'export',uid(),clock);await service.privacy.processOne(clock);const list=await service.privacy.list(a,clock);assert.equal(list[0].state,'completed');const u=new URL(list[0].downloadUrl!),data=await service.privacy.download(job.id,a.id,u.searchParams.get('expires')!,u.searchParams.get('token')!,clock);assert.ok(data.toString().includes('Export owner'));assert.ok(!data.toString().includes('Other private name'));await service.privacy.request(a,'delete',uid(),clock);await service.privacy.processOne(clock);assert.equal((await http(a,'/v1/garden')).status,401);assert.equal((await db.query('SELECT id FROM entities WHERE actor_id=$1',[a.id])).rows.length,0);assert.ok((await db.query('SELECT id FROM entities WHERE actor_id=$1',[b.id])).rows.length>0);});
 test('local authentication verifies email, rotates refresh tokens and refuses reused refresh',async()=>{const email=uid()+'@tests.invalid',password='correct-test-password-82716';const signup=await http(null,'/auth/v1/signup','POST',{email,password});assert.equal(signup.status,200);assert.equal((await http(null,'/auth/v1/token?grant_type=password','POST',{email,password})).status,401);let token='';for(const path of await readdir('.local/mail')){const m=JSON.parse(await readFile(join('.local/mail',path),'utf8'));if(m.to===email)token=m.token;}assert.ok(token);const verified=await http(null,'/auth/v1/verify','POST',{email,token,type:'email'});assert.equal(verified.status,200,JSON.stringify(verified.body));const refresh=verified.body.refresh_token;const result=await http(null,'/auth/v1/token?grant_type=refresh_token','POST',{refresh_token:refresh});assert.equal(result.status,200);assert.notEqual(result.body.refresh_token,refresh);assert.equal((await http(null,'/auth/v1/token?grant_type=refresh_token','POST',{refresh_token:refresh})).status,401);});
+
+test('new plants freeze their renderer and full procedural descriptor at enrollment',async()=>{
+ const a=await user();const g=await garden.enroll(db,a,'UTC','garden-policy-2.0.0',uid(),clock);
+ const row=(await db.query('SELECT plant_descriptor FROM challenges WHERE id=$1',[g.id])).rows[0];
+ assert.equal(row.plant_descriptor.rendererVersion,'1.1.0');
+ assert.equal(row.plant_descriptor.seed,g.plant.seed);
+ assert.ok(row.plant_descriptor.leaves.length>0);
+ const before=stableJSON(row.plant_descriptor);
+ await migrate(db);await garden.getGarden(db,a,clock);
+ const again=(await db.query('SELECT plant_descriptor FROM challenges WHERE id=$1',[g.id])).rows[0];
+ assert.equal(stableJSON(again.plant_descriptor),before);
+ assert.equal((await garden.getGarden(db,a,clock))!.plant.rendererVersion,'1.1.0');
+});
+test('a migrated legacy cycle retains renderer 1.0 rather than silently changing its plant',async()=>{
+ const a=await user();const g=await garden.enroll(db,a,'UTC','garden-policy-2.0.0',uid(),clock);
+ // Simulate a row created before the nullable descriptor column was introduced.
+ await db.query('UPDATE challenges SET plant_descriptor=NULL WHERE id=$1',[g.id]);
+ await migrate(db);
+ const legacy=await garden.getGarden(db,a,clock);
+ assert.equal(legacy!.plant.rendererVersion,'1.0.0');
+ assert.equal(legacy!.plant.seed,g.plant.seed);
+ assert.equal((await db.query('SELECT plant_descriptor FROM challenges WHERE id=$1',[g.id])).rows[0].plant_descriptor,null);
+});
+
+/** Server fixtures mint only local test credits; they are not evidence of store fulfillment. */
+async function testRewardWallet(){
+ const actor=await user(),challenge=uid(),coin=uid();
+ await db.query("INSERT INTO challenges(id,actor_id,state,timezone,policy_version,boundaries,seed,created_at) VALUES($1,$2,'harvested','UTC','garden-policy-2.0.0',$3::jsonb,1,$4)",[challenge,actor.id,JSON.stringify(Array(53).fill(clock.toISOString())),clock.toISOString()]);
+ await db.query("INSERT INTO coins(id,actor_id,challenge_id,state,earned_at) VALUES($1,$2,$3,'available',$4)",[coin,actor.id,challenge,clock.toISOString()]);
+ return {actor,coin};
+}
+test('a genuinely expired Plus subscription is eligible through the same rule at quote and execution',async()=>{
+ const {actor,coin}=await testRewardWallet();let grants=0;
+ let record:Subscription={plan:'plus',state:'expired',store:'app_store',startAt:'2026-01-01T00:00:00Z',endAt:'2026-02-01T00:00:00Z',verifiedAt:clock.toISOString()};
+ const provider:BillingProvider={configured:true,async read(){return record},async grant(_id,endAt){grants++;return record={plan:'reward_plus',state:'active',store:'promotional',startAt:clock.toISOString(),endAt,verifiedAt:clock.toISOString(),autoRenew:false}}};
+ const quote=await quoteReward(db,actor,coin,uid(),provider,clock);assert.equal(quote.eligible,true);
+ const reserved=await reserveRedemption(db,actor,quote.id,quote.terms_hash,uid(),clock);
+ await processRedemption(db,actor,reserved.id,provider,clock);
+ assert.equal((await getRedemption(db,actor,reserved.id)).state,'confirmed');assert.equal(grants,1);
+ assert.equal((await garden.wallet(db,actor))[0].state,'redeemed');
+});
+test('invalid, expired or stale provider replies cannot consume a reward coin',async()=>{
+ for(const invalid of [{state:'expired'},{endAt:'not-a-date'},{startAt:'not-a-date'},{startAt:'2099-01-01T00:00:00Z'},{verifiedAt:'2020-01-01T00:00:00Z'},{autoRenew:true}]){
+  const {actor,coin}=await testRewardWallet();let grants=0;
+  let record:Subscription={plan:'free',state:'active',store:null,startAt:null,endAt:null,verifiedAt:clock.toISOString()};
+  const provider:BillingProvider={configured:true,async read(){return record},async grant(_id,endAt){grants++;return record={plan:'reward_plus',state:'active',store:'promotional',startAt:clock.toISOString(),endAt,verifiedAt:clock.toISOString(),autoRenew:false,...invalid} as Subscription}};
+  const quote=await quoteReward(db,actor,coin,uid(),provider,clock);
+  const reserved=await reserveRedemption(db,actor,quote.id,quote.terms_hash,uid(),clock);
+  await processRedemption(db,actor,reserved.id,provider,clock);
+  await reconcileRedemption(db,actor,reserved.id,provider,clock);
+  assert.equal((await getRedemption(db,actor,reserved.id)).state,'unknown_reconciling',JSON.stringify(invalid));
+  assert.equal((await garden.wallet(db,actor))[0].state,'reserved');assert.equal(grants,1);
+  assert.equal((await entitlement(db,actor,clock)).plan,'free');
+ }
+});
+test('Google extension preserves cancellation and never claims a cancelled plan will renew',async()=>{
+ const {actor,coin}=await testRewardWallet();let calls=0;
+ let record:Subscription={plan:'plus',state:'active',store:'play_store',startAt:'2026-09-01T00:00:00Z',endAt:'2026-10-01T00:00:00Z',productId:'plus:monthly',autoRenew:false,verifiedAt:clock.toISOString()};
+ const provider:BillingProvider={configured:true,async read(){return record},async grant(){throw Error('wrong route')},async defer(_id,productId,endAt){calls++;assert.equal(productId,record.productId);return record={...record,endAt}}};
+ const q=await quoteReward(db,actor,coin,uid(),provider,clock);
+ assert.equal(q.route,'google_play_defer');assert.equal(q.auto_renew_after,false);
+ assert.match(q.billing_effect,/sin reactivar/);assert.equal(q.benefit_end_at,'2026-11-01T00:00:00.000Z');
+ const r=await reserveRedemption(db,actor,q.id,q.terms_hash,uid(),clock);await processRedemption(db,actor,r.id,provider,clock);
+ assert.equal((await getRedemption(db,actor,r.id)).state,'confirmed');assert.equal(calls,1);
+});
+test('a store response that silently reactivates renewal is not accepted as the quoted benefit',async()=>{
+ const {actor,coin}=await testRewardWallet();
+ let record:Subscription={plan:'plus',state:'active',store:'play_store',startAt:'2026-09-01T00:00:00Z',endAt:'2026-10-01T00:00:00Z',productId:'plus:monthly',autoRenew:false,verifiedAt:clock.toISOString()};
+ const provider:BillingProvider={configured:true,async read(){return record},async grant(){throw Error('wrong route')},async defer(_id,_product,endAt){return record={...record,endAt,autoRenew:true}}};
+ const q=await quoteReward(db,actor,coin,uid(),provider,clock);const r=await reserveRedemption(db,actor,q.id,q.terms_hash,uid(),clock);
+ await processRedemption(db,actor,r.id,provider,clock);assert.equal((await getRedemption(db,actor,r.id)).state,'unknown_reconciling');
+ assert.equal((await garden.wallet(db,actor))[0].state,'reserved');
+});
