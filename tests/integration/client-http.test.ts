@@ -121,6 +121,10 @@ test('completed workout survives restart and sync with its individual sets and g
   const session = createSession(a.getSnapshot(), undefined, 0, [a.getSnapshot().exercises[0].id]);
   await a.dispatch({ type: 'startSession', session });
   const ex = a.getSnapshot().sessions[0].exercises[0];
+  // An automatic network acknowledgement can arrive while the user edits this
+  // captured form baseline. It must not create a spurious stale-series conflict.
+  await new SyncService(api, a).sync();
+  assert.deepEqual(a.getSnapshot().outbox, []);
   await a.dispatch({ type: 'set', sessionId: session.id, exerciseId: ex.id, set: { ...ex.sets[0], load: 20, reps: 8 }, complete: true });
   const rest = a.getSnapshot().sessions[0].restDeadline; assert.ok(rest);
   const reopened = await new ClientRepo(disk.driver, identity.userId, 'UTC').init();

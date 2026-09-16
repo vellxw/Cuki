@@ -247,3 +247,23 @@ test('editing targets twice on the same day displays and persists the latest tar
   const reopened = await new ClientRepo(disk.driver, 'guest', 'UTC').init();
   expect(goalAt(reopened.getSnapshot())?.energy).toBe(2250);
 });
+
+test('a server acknowledgement arriving while editing a set preserves typed load and can complete safely',async()=>{
+ const created=createSession(repo.getSnapshot(),undefined,0,[repo.getSnapshot().exercises[0].id]);await repo.dispatch({type:'startSession',session:created});
+ const active=repo.getSnapshot().sessions[0],exercise=active.exercises[0],base=exercise.sets[0];
+ show(<ActiveWorkout params={{id:active.id}}/>,{id:active.id});
+ fireEvent.changeText(screen.getByLabelText('Carga kg'),'22');fireEvent.changeText(screen.getByLabelText('Repeticiones'),'8');
+ await waitFor(()=>expect((repo.getSnapshot().drafts['active-set:'+base.id] as any)?.load).toBe('22'));
+ await act(async()=>{await repo.mutate(s=>{const set=s.sessions[0].exercises[0].sets[0];set.version++;s.syncVersions['set/'+set.id]=set.version;});});
+ expect(screen.getByLabelText('Carga kg').props.value).toBe('22');fireEvent.press(screen.getByRole('button',{name:'Completar serie'}));
+ await waitFor(()=>expect(repo.getSnapshot().sessions[0].exercises[0].sets[0].completedAt).not.toBeNull());
+ expect(repo.getSnapshot().sessions[0].exercises[0].sets[0].load).toBe(22);expect(navigation.router.push).toHaveBeenLastCalledWith(expect.objectContaining({params:expect.objectContaining({screenId:'SC-48'})}));
+});
+test('an actual remote load change is presented as a conflict without discarding the typed set',async()=>{
+ const created=createSession(repo.getSnapshot(),undefined,0,[repo.getSnapshot().exercises[0].id]);await repo.dispatch({type:'startSession',session:created});
+ const active=repo.getSnapshot().sessions[0],base=active.exercises[0].sets[0];show(<ActiveWorkout params={{id:active.id}}/>,{id:active.id});
+ fireEvent.changeText(screen.getByLabelText('Carga kg'),'22');fireEvent.changeText(screen.getByLabelText('Repeticiones'),'8');await waitFor(()=>expect((repo.getSnapshot().drafts['active-set:'+base.id] as any)?.load).toBe('22'));
+ await act(async()=>{await repo.mutate(s=>{const set=s.sessions[0].exercises[0].sets[0];set.version++;set.load=30;});});
+ fireEvent.press(screen.getByRole('button',{name:'Completar serie'}));await waitFor(()=>expect(screen.getByText(/La serie cambió/)).toBeTruthy());
+ expect(screen.getByLabelText('Carga kg').props.value).toBe('22');expect(repo.getSnapshot().sessions[0].exercises[0].sets[0].completedAt).toBeNull();
+});

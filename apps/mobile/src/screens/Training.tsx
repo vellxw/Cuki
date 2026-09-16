@@ -458,6 +458,7 @@ function CurrentSet({
   const task = useTask();
   const d = useDraft('active-set:' + set.id, () => ({
     version: set.version,
+    baseline: set,
     load: set.load === null ? '' : String(Number(loadToDisplay(set.load, state.profile.units).toFixed(3))),
     reps: set.reps === null ? '' : String(set.reps),
     seconds: set.seconds === null ? '' : String(set.seconds),
@@ -503,6 +504,7 @@ function CurrentSet({
         sessionId: session.id,
         exerciseId,
         set: updated,
+        baseSet: d.value.baseline,
         complete: true
       });
       await repo.dispatch({
@@ -529,7 +531,7 @@ function CurrentSet({
         lastExerciseId: exerciseId,
         lastSetId: set.id
       });
-    })} /><Message type="error">{task.error ?? d.error}</Message></Glass>;
+    })} />{task.error&&set.version!==d.value.version&&<Button title="Descartar borrador y recargar serie actual" variant="quiet" onPress={()=>{d.set({version:set.version,baseline:set,load:set.load==null?'':String(Number(loadToDisplay(set.load,state.profile.units).toFixed(3))),reps:set.reps==null?'':String(set.reps),seconds:set.seconds==null?'':String(set.seconds),meters:set.meters==null?'':String(set.meters)});}}/>}<Message type="error">{task.error ?? d.error}</Message></Glass>;
 }
 export function Rest({
   params
@@ -592,6 +594,7 @@ export function SetEditor({
   const set = current?.sets.find(s => s.id === params.setId);
   const d = useDraft('set-editor:' + params.setId, () => ({
     baseVersion: set?.version ?? 0,
+    baseline: set,
     kind: set?.kind ?? 'working' as SetKind,
     load: set?.load === null || set?.load === undefined ? '' : String(Number(loadToDisplay(set.load, state.profile.units).toFixed(3))),
     reps: set?.reps === null || set?.reps === undefined ? '' : String(set.reps),
@@ -648,7 +651,8 @@ export function SetEditor({
           type: 'set',
           sessionId: session.id,
           exerciseId: current.id,
-          set: updated
+          set: updated,
+          baseSet: d.value.baseline
         });
         await repo.dispatch({
           type: 'dropDraft',

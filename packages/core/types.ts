@@ -43,7 +43,7 @@ export type Command=
  |{type:'toggle';field:ToggleField;id:string}|{type:'collection';collection:Collection}|{type:'comment';comment:Comment}|{type:'deleteComment';id:string}
  |{type:'cooking';cooking:AppState['cooking']}|{type:'cooked';recipeId:string}
  |{type:'plan';plan:WorkoutPlan}|{type:'deletePlan';id:string}|{type:'exercise';exercise:Exercise}
- |{type:'startSession';session:WorkoutSession}|{type:'set';sessionId:string;exerciseId:string;set:SetEntry;complete?:boolean}
+ |{type:'startSession';session:WorkoutSession}|{type:'set';sessionId:string;exerciseId:string;set:SetEntry;complete?:boolean;baseSet?:SetEntry}
  |{type:'deleteSet';sessionId:string;exerciseId:string;setId:string}|{type:'sessionExercise';sessionId:string;replaceId?:string;exercise:SessionExercise}
  |{type:'sessionIndex';sessionId:string;index:number}|{type:'sessionNote';id:string;note:string}|{type:'pauseSession'|'resumeSession'|'discardSession';id:string}|{type:'finishSession';id:string;note:string}
  |{type:'rest';sessionId:string;deadline:number|null}|{type:'notification';sessionId:string;notificationId:string|null}
