@@ -99,14 +99,21 @@ def launch():
     adb('shell', 'am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', 'cuki://', PACKAGE)
 
 
-def scroll_to(identifier, limit=7):
-    # Return targets already visible; otherwise scan both directions. A retained
-    # recipe/plan scroll offset can legitimately put an earlier field above us.
-    for direction in ('down', 'up'):
+def scroll_to(identifier, limit=9, predicate=lambda node: True):
+    # A visible field label is not its input. Match the requested native type and
+    # bring the whole target above system bars before returning a hit-tested node.
+    width, height = [int(v) for v in re.findall(r'(\d+)x(\d+)', adb('shell', 'wm', 'size'))[-1]]
+    def usable(node):
+        values = [int(v) for v in re.findall(r'-?\d+', node.get('bounds', ''))]
+        if len(values) != 4 or not predicate(node):
+            return False
+        x1, y1, x2, y2 = values
+        return x2 > x1 and y2 > y1 and y1 >= height * .055 and y2 <= height * .92
+    for direction in ('down', 'up', 'down'):
         previous = None
         for _ in range(limit):
             try:
-                return wait_node(identifier, timeout=1)
+                return wait_node(identifier, timeout=1, predicate=usable)
             except AssertionError:
                 xml = hierarchy()
                 signature = [(n.get('resource-id'), n.get('content-desc'), n.get('bounds'))
@@ -114,16 +121,15 @@ def scroll_to(identifier, limit=7):
                 if signature == previous:
                     break
                 previous = signature
-                width, height = [int(v) for v in re.findall(r'(\d+)x(\d+)', adb('shell', 'wm', 'size'))[-1]]
-                start, end = (.70, .32) if direction == 'down' else (.32, .70)
+                start, end = (.72, .30) if direction == 'down' else (.30, .72)
                 adb('shell', 'input', 'swipe', str(width // 2), str(int(height * start)), str(width // 2), str(int(height * end)), '350')
-    return wait_node(identifier, timeout=3)
+    return wait_node(identifier, timeout=3, predicate=usable)
 
 
 def fill(identifier, text):
     """Use the actual accessible input; clear its existing characters, not the screen stack."""
-    scroll_to(identifier)
-    tap_node(wait_node(identifier, predicate=lambda n: n.get('class') == 'android.widget.EditText'), identifier)
+    field = scroll_to(identifier, predicate=lambda n: n.get('class') == 'android.widget.EditText')
+    tap_node(field, identifier)
     node = wait_node(identifier, predicate=lambda n: n.get('class') == 'android.widget.EditText' and n.get('focused') == 'true')
     current = node.get('text', '')
     # These test fields contain short ASCII names or decimal values.
@@ -141,8 +147,9 @@ def fill(identifier, text):
 
 
 def tap_scrolled(identifier):
-    scroll_to(identifier)
-    tap(identifier)
+    target = scroll_to(identifier, predicate=lambda n: n.get('clickable') == 'true'
+                       and n.get('enabled') != 'false' and n.get('class') != 'android.widget.EditText')
+    tap_node(target, identifier)
 
 
 def run_guest_suite():
