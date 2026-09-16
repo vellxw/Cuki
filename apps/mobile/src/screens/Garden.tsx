@@ -1,8 +1,10 @@
+import {GrowthTimeline} from '../ui/GrowthTimeline';
+import {gardenSummary} from '../../../../packages/core/garden-summary';
 import React, { useState } from 'react';
-import { View, Pressable } from 'react-native';
+import { View, Pressable, useWindowDimensions } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useApp, useTask } from '../data/AppProvider';
-import { Screen, Txt, Title, Button, Card, Row, Message, Empty, Section, Chips, Toggle, Field, useNav, CloudNotice, confirm, useClock, type ScreenProps } from '../ui/components';
+import { Screen, Txt, Title, Button, Card, Glass, Row, Message, Empty, Section, Chips, Toggle, Field, useNav, CloudNotice, confirm, useClock, type ScreenProps } from '../ui/components';
 import { Plant, PlantLite } from '../ui/Plant';
 import { Icon } from '../ui/Icon';
 import { layout, useTheme } from '../ui/theme';
@@ -31,39 +33,41 @@ function useGardenQuery() {
   });
 }
 export function Garden() {
-  const {
-    state,
-    cloud
-  } = useApp();
-  const nav = useNav();
-  const task = useTask();
-  const q = useGardenQuery();
-  const g = state.garden;
-  const {
-    c
-  } = useTheme();
-  const active = g && ['active', 'interrupted', 'ready_to_harvest'].includes(g.state);
-  const weeks = g?.creditedWeeks ?? 0;
-  const counted = state.plants.filter(p => p.archivedAt || p.grownWeeks === 52);
-  return <Screen title="Tu jardín" subtitle="Un objeto propio, cultivado con tu constancia." tab="progress" background testID="SC-79"><Plant seed={active ? g.plant.seed : state.localPlantSeed} weeks={active ? weeks : 0} height={340} /><Txt size={34} weight="600">{active ? `${weeks} de 52 semanas` : 'Una semilla, una historia'}</Txt>{active ? <><Txt tone="secondary">{g.timezone} · {g.state === 'interrupted' ? 'Ciclo interrumpido; tu planta se conserva' : g.state === 'ready_to_harvest' ? 'Lista para guardar en tu jardín' : 'Un entrenamiento válido por ventana semanal'}</Txt><View style={layout.wrap}>{g.weeks.map(w => <Pressable key={w.index} accessibilityRole="button" accessibilityLabel={`Semana ${w.index}: ${weekLabel[w.state]}`} onPress={() => nav.go('SC-81', {
-          week: String(w.index)
-        })} style={{
-          width: 43,
-          minHeight: 44,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: 16,
-          backgroundColor: w.state === 'credited' ? 'rgba(113,204,146,.2)' : 'rgba(148,173,156,.06)',
-          borderWidth: w.state === 'open' ? 1 : 0,
-          borderColor: c.protein
-        }}><Txt size={12} tone={w.state === 'credited' ? 'protein' : 'secondary'}>{w.index}</Txt></Pressable>)}</View>{g.state === 'ready_to_harvest' ? <Button title="Tu planta está lista" icon="leaf" onPress={() => nav.go('SC-84')} /> : g.state === 'interrupted' ? <Button title="Conservar y elegir cómo seguir" onPress={() => nav.go('SC-83')} /> : <Button title="Registrar un entrenamiento" icon="train" onPress={() => nav.tab('train')} />}</> : <><Message>52 ventanas consecutivas de siete días civiles, con al menos una sesión válida en cada una. Una vez cerrado el ciclo, tu planta se guarda y ganás una moneda canjeable por un mes de Plus.</Message><Button title="Plantar mi primer ciclo" icon="leaf" onPress={() => nav.go('SC-80')} /></>}<Section title="Mi colección" action={`${counted.length} plantas`} onAction={() => nav.go('SC-86')}>{counted.slice(0, 3).map(p => <Row key={p.id} title={`Planta ${p.species}`} subtitle={`${p.grownWeeks} semanas · ${p.grownWeeks === 52 ? 'completada' : 'conservada'}`} leading={<View style={{
-        width: 66
-      }}><PlantLite seed={p.seed} weeks={p.grownWeeks} height={80} /></View>} onPress={() => nav.go('SC-86', {
-        plantId: p.id
-      })} />)}</Section><Button title="Mis monedas" icon="coin" variant="secondary" onPress={() => nav.go('SC-88')} /><Button title="Actualizar jardín" variant="quiet" onPress={() => task.run(async () => {
-      await q.refetch();
-      await cloud.collection();
-    })} /><CloudNotice /><Message type="error">{task.error ?? q.error?.message}</Message></Screen>;
+  const {state,cloud}=useApp(),nav=useNav(),task=useTask(),q=useGardenQuery();
+  const {c}=useTheme(),{width,fontScale}=useWindowDimensions();
+  const g=state.garden,active=g&&['active','interrupted','ready_to_harvest'].includes(g.state);
+  const weeks=active?g.creditedWeeks:0,summary=gardenSummary(state),compact=width<370||fontScale>1.3;
+  const counted=state.plants.filter(p=>p.archivedAt||p.grownWeeks===52);
+  const currentWeek=g?.weeks.find(w=>Date.parse(g.serverNow)>=Date.parse(w.startAt)&&Date.parse(g.serverNow)<Date.parse(w.endAt))?.index??Math.min(52,weeks+1);
+  return <Screen back={false} title="Tu jardín" subtitle="Disciplina hoy, una mejor versión mañana." tab="progress" background testID="SC-79" headerRight={<Button title="Perfil" icon="user" variant="quiet" onPress={()=>nav.go('SC-68')}/>}>
+    <View style={{minHeight:compact?420:330,overflow:'visible',justifyContent:'flex-end',gap:9,paddingBottom:4}}>
+      <View pointerEvents="none" style={compact?{position:'absolute',top:-30,right:-15,width:'82%',height:350}:{position:'absolute',top:-86,left:'34%',right:-25,height:425}}><Plant seed={active?g.plant.seed:state.localPlantSeed} weeks={weeks} height={compact?350:425}/></View>
+      <View style={[layout.row,{gap:7}]}><Icon name="leaf" size={18} color={c.protein}/><Txt size={12} tone="secondary">{active?`${weeks} de 52 semanas`:'Tu próxima historia'}</Txt></View>
+      <Txt size={35} weight="600" style={{maxWidth:compact?'90%':'65%'}}>{active?`Semana ${weeks}`:'Una semilla, un comienzo'}</Txt>
+      {active&&<Txt size={23} tone="secondary">{weeks} / 52</Txt>}
+      {active&&<GrowthTimeline weeks={g.weeks} onPress={()=>nav.go('SC-81',{week:String(currentWeek)})}/>}
+      <Txt size={14} tone="secondary" style={{maxWidth:compact?'90%':'64%'}}>{g?.state==='interrupted'?'Tu planta se conserva. Podés elegir cómo seguir.':g?.state==='ready_to_harvest'?'Completaste el ciclo. Tu planta está lista para guardar.':active?'Una sesión esta semana mantiene tu crecimiento.':'Plantá tu ciclo cuando estés listo.'}</Txt>
+    </View>
+    {active?<>
+      <View style={{flexDirection:compact?'column':'row',gap:8}}>
+        <GardenMetric icon="leaf" value={String(weeks)} label="semanas" bars={g.weeks.slice(Math.max(0,weeks-7),weeks).map(w=>w.state==='credited'?1:0)}/>
+        <GardenMetric icon="train" value={fmt(summary.sessionsPerWeek,1)} label="sesiones / semana registradas" bars={summary.weeklySessions}/>
+        <GardenMetric icon="progress" value={summary.comparableLoadChange===null?'—':`${summary.comparableLoadChange>0?'+':''}${fmt(summary.comparableLoadChange)}%`} label="carga en press · 8 rep." bars={summary.comparableLoads.slice(-7)}/>
+      </View>
+      {g.state==='ready_to_harvest'?<Button title="Tu planta está lista" icon="leaf" onPress={()=>nav.go('SC-84')}/>:g.state==='interrupted'?<Button title="Conservar y elegir cómo seguir" onPress={()=>nav.go('SC-83')}/>:<Button title="Registrar un entrenamiento" icon="train" variant="quiet" onPress={()=>nav.tab('train')}/>}
+    </>:<><Message>Un entrenamiento por semana durante 52 semanas consecutivas. Al cerrar el ciclo, guardás tu planta y ganás una moneda por un mes de Plus. También en Gratis.</Message><Button title="Plantar mi primer ciclo" icon="leaf" onPress={()=>nav.go('SC-80')}/></>}
+    <Section title="Mi jardín" action={`${counted.length} plantas`} onAction={()=>nav.go('SC-86')}>
+      <View style={{flexDirection:'row',gap:10,flexWrap:'wrap'}}>{counted.slice(0,3).map(p=><Pressable key={p.id} accessibilityRole="button" accessibilityLabel={`Ver planta ${p.species}, ${p.grownWeeks} semanas`} onPress={()=>nav.go('SC-86',{plantId:p.id})} style={{flex:1,minWidth:88,gap:6}}><Glass style={{padding:4,borderRadius:20}}><PlantLite seed={p.seed} weeks={p.grownWeeks} height={108}/></Glass><Txt size={12} style={{textAlign:'center'}}>{p.grownWeeks===52?'Completada':'Conservada'}</Txt><Txt size={11} tone="secondary" style={{textAlign:'center'}}>{p.grownWeeks} semanas</Txt></Pressable>)}</View>
+      {!counted.length&&<Txt tone="secondary" size={13}>Las plantas que completes o conserves van a vivir acá.</Txt>}
+    </Section>
+    <View style={layout.wrap}><Button title="Mis monedas" icon="coin" variant="quiet" onPress={()=>nav.go('SC-88')}/><Button title="Actualizar jardín" icon="refresh" variant="quiet" onPress={()=>task.run(async()=>{await q.refetch();await cloud.collection();})}/></View>
+    {active&&<Txt size={11} tone="secondary">Las estadísticas usan tus registros disponibles. La carga compara series de 8 repeticiones en el mismo press inclinado; no es una medición de fuerza fisiológica.</Txt>}
+    <CloudNotice/><Message type="error">{task.error??q.error?.message}</Message>
+  </Screen>;
+}
+function GardenMetric({icon,value,label,bars}:{icon:string;value:string;label:string;bars:number[]}){
+ const {c}=useTheme(),max=Math.max(1,...bars);
+ return <Glass style={{flex:1,padding:13,minHeight:126,gap:5,borderRadius:23}}><Icon name={icon} size={19} color={icon==='leaf'?c.protein:c.text}/><Txt size={29} weight="600">{value}</Txt><Txt size={11} tone="secondary">{label}</Txt><View style={{flexDirection:'row',gap:5,alignItems:'flex-end',height:26,marginTop:4}}>{bars.slice(-7).map((n,i)=><View key={i} style={{flex:1,maxWidth:6,height:Math.max(2,24*n/max),borderRadius:4,backgroundColor:icon==='train'?c.carbs:c.protein,opacity:n>0?.85:.25}}/>)}</View></Glass>;
 }
 export function EnrollGarden() {
   const {
@@ -91,7 +95,7 @@ export function GardenWeekScreen({
   const nav = useNav();
   const week = state.garden?.weeks.find(w => w.index === Number(params.week));
   const sessions = week ? state.sessions.filter(s => sessionQualifies(s) && s.endedAt && Date.parse(s.endedAt) >= Date.parse(week.startAt) && Date.parse(s.endedAt) < Date.parse(week.endAt)) : [];
-  return <Screen title={`Semana ${week?.index ?? params.week ?? ''}`} tab="progress" testID="SC-81">{week ? <><Title>{weekLabel[week.state]}</Title><Txt>Inicio: {instantLabel(week.startAt)}</Txt><Txt>Cierre: {instantLabel(week.endAt)}</Txt><Txt tone="secondary">Zona del ciclo: {state.garden?.timezone}</Txt><Message>Una sesión se asigna por su hora de finalización a una sola ventana. Las sesiones anteriores al alta del ciclo no generan recompensa.</Message>{sessions.map(s => <Row key={s.id} title={s.name} subtitle={s.id === week.credit?.sessionId ? 'Crédito confirmado por el servidor' : 'Registro local; pendiente de validación o sin crédito adicional'} onPress={() => nav.go('SC-52', {
+  return <Screen title={`Semana ${week?.index ?? params.week ?? ''}`} tab="progress" testID="SC-81">{state.garden&&<Chips options={state.garden.weeks.map(w=>({value:String(w.index),label:`Semana ${w.index}`}))} value={params.week??""} onChange={value=>nav.replace("SC-81",{week:value})}/>} {week ? <><Title>{weekLabel[week.state]}</Title><Txt>Inicio: {instantLabel(week.startAt)}</Txt><Txt>Cierre: {instantLabel(week.endAt)}</Txt><Txt tone="secondary">Zona del ciclo: {state.garden?.timezone}</Txt><Message>Una sesión se asigna por su hora de finalización a una sola ventana. Las sesiones anteriores al alta del ciclo no generan recompensa.</Message>{sessions.map(s => <Row key={s.id} title={s.name} subtitle={s.id === week.credit?.sessionId ? 'Crédito confirmado por el servidor' : 'Registro local; pendiente de validación o sin crédito adicional'} onPress={() => nav.go('SC-52', {
         id: s.id
       })} />)}{!sessions.length && <Empty title="Sin sesiones locales en esta ventana" detail="Una sesión de otro dispositivo puede aparecer al sincronizar. No se descarta el crédito del servidor por falta de datos locales." />}<Button title="Revisar sincronización" onPress={() => nav.go('SC-82')} /></> : <Empty title="No hay una ventana seleccionada" detail="Abrí tu ciclo desde el jardín." />}<Button title="Volver al jardín" variant="quiet" onPress={() => nav.finish('SC-79')} /></Screen>;
 }
