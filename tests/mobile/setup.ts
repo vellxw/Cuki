@@ -17,3 +17,10 @@ jest.mock('expo-glass-effect', () => ({
 }));
 jest.mock('expo-blur', () => ({ BlurView: require('react-native').View, BlurTargetView: require('react-native').View }));
 jest.mock('expo-image', () => ({ Image: require('react-native').Image }));
+jest.mock('expo-audio', () => ({
+  RecordingPresets: { HIGH_QUALITY: { extension:'.m4a' } },
+  useAudioRecorder: jest.fn(() => ({ uri:null, record:jest.fn(), stop:jest.fn(), getStatus:()=>({isRecording:false,canRecord:false}), prepareToRecordAsync:jest.fn() })),
+  useAudioRecorderState: jest.fn(() => ({durationMillis:0,isRecording:false})),
+  requestRecordingPermissionsAsync: jest.fn(async()=>({granted:false})),
+  setAudioModeAsync: jest.fn(async()=>{}),
+}));

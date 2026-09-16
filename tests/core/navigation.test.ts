@@ -70,3 +70,19 @@ test('route identity has no delimiter collisions and normalizes implicit draft k
   assert.equal(editorDraftKey('recipe',{}),'recipe-editor:new');
   assert.equal(editorDraftKey('recipe',{id:'old',draftKey:'explicit'}),'explicit');
 });
+
+test('registration return accepts only bounded internal screens and never an external deep link', async()=>{
+  const {safeReturnHref,originHref}=await import('../../packages/core/navigation');
+  for(const path of ['/recipes','/(tabs)/home','/screen/SC-26?id=recipe-a']) assert.equal(safeReturnHref(path),path);
+  for(const path of ['https://phishing.invalid','//phishing.invalid','cuki://home','/screen/../admin','/screen/%53C-26','/screen/SC-26\\evil','/home\n','/home?'+ 'x'.repeat(4100)])assert.equal(safeReturnHref(path),null,path);
+  assert.equal(originHref('/screen/SC-26',{screenId:'SC-26',id:'a',returnTo:'/home'}),'/screen/SC-26?id=a');
+  assert.equal(originHref('/unknown',{id:'a'}),'/(tabs)/home');
+});
+test('finishing a logical root returns to the existing tab navigator, not a duplicate registry screen',()=>{
+  const router=StackRouter({initialRouteName:'(tabs)'});
+  const options={routeNames:['(tabs)',dynamic,'register'],routeParamList:{},routeGetIdList:{[dynamic]:({params}:any)=>screenIdentity(dynamic,params)}};
+  let state=router.getInitialState(options);const key=state.routes[0].key;
+  state=router.getStateForAction(state,StackActions.push(dynamic,{screenId:'SC-44'}),options);
+  state=router.getStateForAction(state,StackActions.popTo('(tabs)',{screen:'train',params:{planId:'a'}}),options);
+  assert.equal(state.routes.length,1);assert.equal(state.routes[0].key,key);assert.equal(state.routes[0].params.screen,'train');
+});

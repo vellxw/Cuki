@@ -4,14 +4,35 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';import {useRout
 import {useApp} from '../data/AppProvider';import {Icon} from './Icon';import {layout,useTheme,tokens} from './theme';import type {Nutrients} from '../../../../packages/core/types';import {duration,fmt,localDate,prettyDate,validDate} from '../../../../packages/core/utils';
 import {SurfaceBackdrop,useDockBackdrop,type BackdropTarget} from './Backdrop';
 import {KeyboardDismissBar} from './KeyboardDismissBar';
+import {tabPaths, rootScreenPaths, originHref, safeReturnHref} from '../../../../packages/core/navigation';
 export const art={clean:require('../../assets/botanical-clean.webp'),bowl:require('../../assets/bowl.webp')};
 export type TabName='home'|'recipes'|'train'|'progress';export interface ScreenProps {params:Record<string,string|undefined>}
-const tabPaths:Record<TabName,string>={home:'/(tabs)/home',recipes:'/(tabs)/recipes',train:'/(tabs)/train',progress:'/(tabs)/progress'};
-function currentHref(path:string,params:Record<string,unknown>){const query=Object.entries(params).filter(([k,v])=>k!=='screenId'&&typeof v==='string').map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(String(v))).join('&');return path+(query?'?'+query:'')}
-export function useNav(){const router=useRouter(),path=usePathname(),raw=useLocalSearchParams();const params=raw as Record<string,string|undefined>;return useMemo(()=>{
- const target=(id:string,p:Record<string,string|number|undefined>={})=>({pathname:'/screen/[screenId]',params:{...p,screenId:id,...(p.returnTo?{}:params.returnTo?{returnTo:params.returnTo}:{})}} as Href);
- return{go:(id:string,p:Record<string,string|number|undefined>={})=>router.push(target(id,id==='SC-12'?{returnTo:params.returnTo??currentHref(path,raw),...p}:p)),replace:(id:string,p:Record<string,string|number|undefined>={})=>router.replace(target(id,p)),back:()=>router.canGoBack()?router.back():router.replace(tabPaths.home as Href),tab:(name:TabName)=>router.navigate(tabPaths[name] as Href),finish:(id:string,p:Record<string,string|number|undefined>={})=>router.dismissTo(target(id,p)),register:(p:Record<string,string|number|undefined>={})=>router.push({pathname:'/register',params:{...p,returnTo:currentHref(path,raw)}} as Href),completeRegistration:()=>router.dismissTo((params.returnTo??tabPaths.home) as Href)}
- },[router,path,JSON.stringify(raw)])}
+export function useNav() {
+ const router=useRouter(),path=usePathname(),raw=useLocalSearchParams();
+ const params=raw as Record<string,string|undefined>;
+ return useMemo(()=>{
+  const returning=safeReturnHref(params.returnTo);
+  const target=(id:string,p:Record<string,string|number|undefined>={})=>{
+   const {returnTo,...rest}=p;const origin=safeReturnHref(returnTo)??returning;
+   return {pathname:rootScreenPaths[id]??'/screen/[screenId]',
+    params:{...rest,...(rootScreenPaths[id]?{}:{screenId:id}),...(origin?{returnTo:origin}:{})}} as Href;
+  };
+  return {
+   go:(id:string,p:Record<string,string|number|undefined>={})=>{
+    const destination=target(id,id==='SC-12'?{returnTo:returning??originHref(path,raw),...p}:p);
+    // A logical root must use the existing tab navigator, never a generic screen
+    // with the same contents but no dock (and another history stack underneath).
+    return rootScreenPaths[id]?router.dismissTo(destination):router.push(destination);
+   },
+   replace:(id:string,p:Record<string,string|number|undefined>={})=>rootScreenPaths[id]?router.dismissTo(target(id,p)):router.replace(target(id,p)),
+   back:()=>router.canGoBack()?router.back():router.replace(tabPaths.home as Href),
+   tab:(name:TabName)=>router.navigate(tabPaths[name] as Href),
+   finish:(id:string,p:Record<string,string|number|undefined>={})=>router.dismissTo(target(id,p)),
+   register:(p:Record<string,string|number|undefined>={})=>router.push({pathname:'/register',params:{...p,returnTo:originHref(path,raw)}} as Href),
+   completeRegistration:()=>router.dismissTo((returning??tabPaths.home) as Href),
+  };
+ },[router,path,JSON.stringify(raw)]);
+}
 export function Txt({size=16,weight='400',tone='text',style,children,...props}:TextProps&{size?:number;weight?:'400'|'500'|'600'|'700';tone?:'text'|'secondary'|'muted'|'protein'|'carbs'|'fat'|'error'|'warning'}){const {c}=useTheme();return <Text {...props} style={[{fontSize:size,lineHeight:size*1.35,fontWeight:weight,color:c[tone],fontVariant:['tabular-nums']},style]}>{children}</Text>}
 export const Title=({children}:{children:React.ReactNode})=><Txt size={28} weight="600">{children}</Txt>;
 export function Glass({children,style,strong=false,blurTarget}:{children?:React.ReactNode;style?:StyleProp<ViewStyle>;strong?:boolean;blurTarget?:BackdropTarget|null}) {

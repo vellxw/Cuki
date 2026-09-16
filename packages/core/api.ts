@@ -1,3 +1,4 @@
+import {reconcileJob} from './media-client';
 import type {AppState,AIJob,AIRoute,GardenChallenge,PlantInstance,Coin,RewardQuote,Redemption,Entitlement,Proposal} from './types';import type {ClientRepo,SyncChange} from './repository';import {invariant} from './utils';
 export class ApiError extends Error {constructor(message:string,readonly status:number,readonly details?:unknown){super(message)}}
 export class ApiClient {
@@ -67,7 +68,7 @@ export class CloudService {
  async refreshEntitlement(signal?:AbortSignal){const entitlement=await this.api.request<Entitlement>('/v1/billing/entitlement','GET',undefined,undefined,signal);if(signal?.aborted)throw new ApiError('Actualización suspendida.',499);await this.repo.applyCloud({entitlement});return entitlement}
  uploadPhoto(uri:string,purpose:string){return this.upload(uri,purpose)}
  async createJob(route:AIRoute,input:string,mediaId:string|null,key:string,mediaUri:string|null=null){const job=await this.api.request<AIJob>('/v1/ai/jobs','POST',{route,input,mediaId},key);const value={...job,mediaUri};await this.repo.dispatch({type:'job',job:value});return value}
- async refreshJob(id:string){const j=await this.api.request<AIJob>('/v1/ai/jobs/'+encodeURIComponent(id));const old=this.repo.getSnapshot().jobs.find(x=>x.id===id);const value={...j,mediaUri:old?.mediaUri??null};await this.repo.dispatch({type:'job',job:value});return value}
+ async refreshJob(id:string){const j=await this.api.request<AIJob>('/v1/ai/jobs/'+encodeURIComponent(id));const old=this.repo.getSnapshot().jobs.find(x=>x.id===id);const value=reconcileJob(j,old);await this.repo.dispatch({type:'job',job:value});return value}
  async cancelJob(id:string){const j=await this.api.request<AIJob>('/v1/ai/jobs/'+encodeURIComponent(id)+'/cancel','POST',{});await this.repo.dispatch({type:'job',job:j});return j}
  async proposals(){const p=await this.api.request<Proposal[]>('/v1/proposals');await this.repo.applyCloud({proposals:p});return p}
  async proposalAction(id:string,action:'accept'|'reject'|'revert',version:number,key:string){const p=await this.api.request<Proposal>('/v1/proposals/'+encodeURIComponent(id)+'/'+action,'POST',{version},key);await this.repo.dispatch({type:'proposal',proposal:p});return p}

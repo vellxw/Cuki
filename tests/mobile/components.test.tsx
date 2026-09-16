@@ -58,3 +58,10 @@ test('filter chips remain intrinsic-height and do not consume vertical free spac
  expect(scroll.props.keyboardShouldPersistTaps).toBe('handled');
  fireEvent.press(screen.getByRole('button',{name:'Pecho'}));expect(onChange).toHaveBeenCalledWith('chest');
 });
+
+test('logical training root uses the existing tabs so the dock is not lost after editing a plan',()=>{
+ function Fixture(){const nav=require('../../apps/mobile/src/ui/components').useNav();return <Button title="Terminar editor" onPress={()=>nav.replace('SC-42',{planId:'plan-a'})}/>;}
+ render(<Fixture/>);fireEvent.press(screen.getByRole('button',{name:'Terminar editor'}));
+ expect(router.dismissTo).toHaveBeenCalledWith({pathname:'/(tabs)/train',params:{planId:'plan-a'}});
+ expect(router.replace).not.toHaveBeenCalled();expect(router.push).not.toHaveBeenCalled();
+});
