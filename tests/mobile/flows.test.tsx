@@ -9,6 +9,7 @@ import {ApiClient, CloudService, SyncService} from '../../packages/core/api';
 import {sqlite} from '../support/sqlite';
 import {Portion, FoodSearch, FoodDetail, PhotoCapture} from '../../apps/mobile/src/screens/Foods';
 import {ActiveWorkout, Rest, FinishWorkout, PlanEditor} from '../../apps/mobile/src/screens/Training';
+import {Home} from '../../apps/mobile/src/screens/Home';
 import {createSession} from '../../packages/core/state';
 import {entryFromFood, recipeNutrition} from '../../packages/core/utils';
 
@@ -209,4 +210,23 @@ test('an empty required plan number remains editable and cannot silently save it
   fireEvent.press(screen.getByRole('button',{name:'Guardar plan'}));
   await waitFor(()=>expect(repo.getSnapshot().plans).toHaveLength(1));
   expect(repo.getSnapshot().plans[0].days[0].exercises[0].sets).toBe(4);
+});
+
+test('Home preserves real empty data, contextual logging and optional goals without invented progress',()=>{
+ show(<Home/>);
+ expect(screen.getByText('Tu historia empieza con una semilla')).toBeTruthy();
+ expect(screen.queryByText('Semana 18 de 52')).toBeNull();
+ const bars=screen.getAllByRole('progressbar');
+ expect(bars).toHaveLength(3);for(const bar of bars)expect(bar.props.accessibilityValue).toBeUndefined();
+ fireEvent.press(screen.getByTestId('home-register'));
+ expect(navigation.router.push).toHaveBeenCalledWith(expect.objectContaining({pathname:'/register'}));
+ fireEvent.press(screen.getByRole('button',{name:'Configurar metas opcionales'}));
+ expect(navigation.router.push).toHaveBeenLastCalledWith(expect.objectContaining({params:expect.objectContaining({screenId:'SC-04'})}));
+});
+test('Home macro progress uses actual amounts and the effective goal, not decorative filled bars',async()=>{
+ await repo.dispatch({type:'goal',goal:{id:'home-goal',version:1,effectiveFrom:repo.getSnapshot().selectedDate,energy:2000,protein:150,carbs:200,fat:60}});
+ show(<Home/>);
+ const bars=screen.getAllByRole('progressbar');expect(bars.map(b=>b.props.accessibilityValue.now)).toEqual([0,0,0]);
+ expect(bars.map(b=>b.props.accessibilityValue.max)).toEqual([150,200,60]);
+ expect(screen.queryByRole('button',{name:'Configurar metas opcionales'})).toBeNull();
 });
