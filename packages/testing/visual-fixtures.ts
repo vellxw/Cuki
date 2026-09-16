@@ -1,3 +1,4 @@
+import {CURRENT_RENDERER} from '../garden-engine/leaf-raster';
 /** Synthetic rendering fixtures from blueprint v2. Never a food catalog, real workout
  * history, photo-accuracy evaluation, entitlement or server-authorized garden reward.
  * Loaded only by a separately identified native visual-QA build with no cloud URL.
@@ -38,7 +39,7 @@ export function createVisualState(scene:VisualScene):{state:AppState;screen:stri
  const start=new Date(Date.parse(FIXTURE_NOW)-(stage-1)*7*86400000-3600000).toISOString();
  const limits=boundaries(start,state.profile.timezone),values=evaluate(limits,Array.from({length:stage},(_,i)=>i),FIXTURE_NOW),descriptor=generatePlant(FIXTURE_SEED);
  const garden:GardenChallenge={id:'visual-cycle',version:1,state:'active',timezone:state.profile.timezone,policyVersion:'garden-policy-2.0.0',boundaries:limits,serverNow:FIXTURE_NOW,startAt:start,endAt:limits[52],creditedWeeks:stage,
- plant:{id:'visual-plant',seed:FIXTURE_SEED,species:descriptor.species,generatorVersion:descriptor.generatorVersion,rendererVersion:descriptor.rendererVersion,grownWeeks:stage,archivedAt:null},
+ plant:{id:'visual-plant',seed:FIXTURE_SEED,species:descriptor.species,generatorVersion:descriptor.generatorVersion,rendererVersion:CURRENT_RENDERER,grownWeeks:stage,archivedAt:null},
  weeks:values.windows.map(w=>({index:w.index,startAt:w.start,endAt:w.end,state:w.state as 'credited'|'future'|'open',credit:w.state==='credited'?{sessionId:'visual-credit-'+w.index,receivedAt:new Date(Date.parse(w.start)+1800000).toISOString()}:null}))};
  state.garden=garden;
  if(scene==='garden')state.plants=[{...garden.plant,id:'visual-collection-a',seed:77351,grownWeeks:52,archivedAt:'2025-09-14T12:00:00Z'},{...garden.plant,id:'visual-collection-b',seed:927514,grownWeeks:52,archivedAt:'2024-09-14T12:00:00Z'}];
