@@ -3,6 +3,7 @@ import {View,Text,Pressable,ScrollView,TextInput,Switch,StyleSheet,ActivityIndic
 import {useSafeAreaInsets} from 'react-native-safe-area-context';import {useRouter,useLocalSearchParams,usePathname,useFocusEffect,type Href} from 'expo-router';import {Image} from 'expo-image';import {LinearGradient} from 'expo-linear-gradient';import {BlurView,BlurTargetView} from 'expo-blur';import {GlassView,isLiquidGlassAvailable,isGlassEffectAPIAvailable} from 'expo-glass-effect';import * as Haptics from 'expo-haptics';import Svg,{Circle,Defs,LinearGradient as SVGGradient,Stop} from 'react-native-svg';
 import {useApp} from '../data/AppProvider';import {Icon} from './Icon';import {layout,useTheme,tokens} from './theme';import type {Nutrients} from '../../../../packages/core/types';import {duration,fmt,localDate,prettyDate,validDate} from '../../../../packages/core/utils';
 import {SurfaceBackdrop,useDockBackdrop,type BackdropTarget} from './Backdrop';
+import {KeyboardDismissBar} from './KeyboardDismissBar';
 export const art={clean:require('../../assets/botanical-clean.webp'),bowl:require('../../assets/bowl.webp')};
 export type TabName='home'|'recipes'|'train'|'progress';export interface ScreenProps {params:Record<string,string|undefined>}
 const tabPaths:Record<TabName,string>={home:'/(tabs)/home',recipes:'/(tabs)/recipes',train:'/(tabs)/train',progress:'/(tabs)/progress'};
@@ -47,10 +48,11 @@ export function Screen({title,subtitle,children,back=true,dock=true,tab,backgrou
      {background&&<><Image source={art.clean} contentFit="cover" style={StyleSheet.absoluteFill} accessible={false}/><LinearGradient colors={dark?['rgba(5,10,8,.64)','rgba(4,10,7,.24)','rgba(4,10,7,.85)']:['rgba(248,247,241,.90)','rgba(248,247,241,.94)']} style={StyleSheet.absoluteFill}/></>}
     </BlurTargetView>
     <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}>
-     <ScrollView contentInsetAdjustmentBehavior="never" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{paddingTop:safe.top+12,paddingHorizontal:20,paddingBottom:tab?115+safe.bottom:32+safe.bottom,gap:18,flexGrow:1}}>
+     <ScrollView testID="screen-scroll" style={{flex:1}} contentInsetAdjustmentBehavior="never" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{paddingTop:safe.top+12,paddingHorizontal:20,paddingBottom:tab?115+safe.bottom:32+safe.bottom,gap:18,flexGrow:1}}>
       {(title||back||headerRight)&&<View style={[layout.row,{alignItems:'flex-start'}]}>{back&&<IconButton name="back" label="Volver" onPress={nav.back}/>}<View style={{flex:1,paddingTop:back?5:3}}>{title&&<Txt size={back?24:32} weight="600">{title}</Txt>}{subtitle&&<Txt tone="secondary" size={14} style={{marginTop:5}}>{subtitle}</Txt>}</View>{headerRight}</View>}
       {children}
      </ScrollView>
+     <KeyboardDismissBar/>
     </KeyboardAvoidingView>
    </BlurTargetView>
   </View>

@@ -147,12 +147,19 @@ try:
         meals = [p for (kind, _), p in entities.items() if kind == 'diary']
         workouts = [p for (kind, _), p in entities.items() if kind == 'session' and p['status'] == 'completed']
         sets = [p for (kind, _), p in entities.items() if kind == 'set' and p.get('completedAt')]
-        if len(meals) != 1 or len(workouts) != 1 or len(sets) != 2:
+        goals = [p for (kind, _), p in entities.items() if kind == 'goal']
+        if len(meals) != 2 or len(goals) != 2 or len(workouts) != 1 or len(sets) != 2:
             return False
-        assert meals[0]['amount'] == 100 and meals[0]['nutrition']['energy'] == 165
+        food = next(m for m in meals if m['name'] == 'Pechuga de pollo asada')
+        recipe = next(m for m in meals if m['name'] == 'Bowl de pollo, arroz y palta')
+        assert food['amount'] == 100 and food['nutrition']['energy'] == 165
+        assert recipe['amount'] == .75 and recipe['unit'] == 'serving' and recipe['snapshot']['recipe']
+        active_goal = max(goals, key=lambda g: (g['effectiveFrom'], g.get('updatedAt', ''), g['version'], g['id']))
+        assert active_goal['energy'] == 2250
+        assert len({m['id'] for m in meals}) == 2
         assert workouts[0]['note'] == 'Persistencia QA sin red'
         return entities
-    wait_server('guest diary and workout merge once', merged)
+    wait_server('guest food, edited recipe, latest targets and workout merge once', merged)
     report['checks'].append('native-sqlite-outbox-to-real-http-and-sql-without-duplicate-merge')
     assert request('/v1/garden', token=token) is None
 

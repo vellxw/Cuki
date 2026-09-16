@@ -17,14 +17,24 @@ final class CUKISmokeTests: XCTestCase {
     private func tap(_ id: String, file: StaticString = #filePath, line: UInt = #line) {
         let item = id.hasPrefix("nav-") ? app.descendants(matching: .any).matching(identifier: id).firstMatch : app.buttons.matching(identifier: id).firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 40), "Missing actionable button: \(id)", file: file, line: line)
+        hideKeyboardIfAvailable()
         makeHittable(item)
+        if !item.isHittable { capture("unreachable-button-" + id) }
         XCTAssertTrue(item.isHittable, "Element not hittable: \(id)", file: file, line: line)
         item.tap()
+    }
+    private func hideKeyboardIfAvailable() {
+        let dismiss = app.buttons.matching(identifier: "keyboard-dismiss").firstMatch
+        if dismiss.exists && dismiss.isHittable {
+            dismiss.tap()
+            let hidden = NSPredicate(format: "exists == false")
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: hidden, object: dismiss)], timeout: 5), .completed)
+        }
     }
     private func makeHittable(_ item: XCUIElement) {
         for _ in 0..<8 {
             if item.isHittable { return }
-            let scroll = app.scrollViews.firstMatch
+            let scroll = app.scrollViews.matching(identifier: "screen-scroll").firstMatch
             let surface = scroll.exists ? scroll : app!
             if item.frame.minY < app.frame.minY + 80 { surface.swipeDown() }
             else { surface.swipeUp() }
@@ -72,6 +82,7 @@ final class CUKISmokeTests: XCTestCase {
                            "Native input lost characters: \(id)", file: file, line: line)
         }
         XCTAssertEqual(item.value as? String, value, file: file, line: line)
+        hideKeyboardIfAvailable()
     }
     private func capture(_ name: String) {
         let screenshot = XCTAttachment(screenshot: app.screenshot())
