@@ -64,13 +64,20 @@ def wait_node(identifier, timeout=45, predicate=lambda node: True):
     raise AssertionError('Native element did not appear: ' + identifier)
 
 
-def tap(identifier):
-    node = wait_node(identifier, predicate=lambda item: item.get('clickable') == 'true' and item.get('enabled') != 'false')
+def tap_node(node, identifier):
     numbers = [int(v) for v in re.findall(r'\d+', node.attrib['bounds'])]
     assert len(numbers) == 4, 'Invalid native bounds: ' + identifier
     x1, y1, x2, y2 = numbers
     assert x2 > x1 and y2 > y1, 'Hidden native target: ' + identifier
     adb('shell', 'input', 'tap', str((x1 + x2) // 2), str((y1 + y2) // 2))
+
+
+def tap(identifier):
+    # The entered search string can equal a result title. Never confuse its editable
+    # TextInput with the button selecting that result.
+    node = wait_node(identifier, predicate=lambda item: item.get('clickable') == 'true'
+                     and item.get('enabled') != 'false' and item.get('class') != 'android.widget.EditText')
+    tap_node(node, identifier)
 
 
 def capture(name):
@@ -107,7 +114,7 @@ def scroll_to(identifier, limit=7):
 def fill(identifier, text):
     """Use the actual accessible input; clear its existing characters, not the screen stack."""
     scroll_to(identifier)
-    tap(identifier)
+    tap_node(wait_node(identifier, predicate=lambda n: n.get('class') == 'android.widget.EditText'), identifier)
     node = wait_node(identifier, predicate=lambda n: n.get('class') == 'android.widget.EditText' and n.get('focused') == 'true')
     current = node.get('text', '')
     # These test fields contain short ASCII names or decimal values.
@@ -156,10 +163,7 @@ try:
     report['checks'].append('four-distinct-destination-screen-roots')
     tap('nav-home'); wait_node('SC-07'); tap('home-register'); wait_node('SC-09')
     tap('Buscar alimento'); wait_node('SC-10')
-    tap('Alimento o ingrediente')
-    wait_node('Alimento o ingrediente', predicate=lambda n: n.get('class') == 'android.widget.EditText' and n.get('focused') == 'true')
-    adb('shell', 'input', 'text', 'Pechuga')
-    wait_node('Alimento o ingrediente', predicate=lambda n: n.get('class') == 'android.widget.EditText' and n.get('text') == 'Pechuga')
+    fill('Alimento o ingrediente', 'Pechuga')
     # Select the result directly, as a person does. An unconditional Back pops the
     # screen when a hardware keyboard means no software IME was opened.
     wait_node('Pechuga de pollo asada', predicate=lambda n: n.get('clickable') == 'true')

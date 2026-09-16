@@ -1,7 +1,7 @@
 import {jest,beforeEach,test,expect} from '@jest/globals';
 import React from 'react';
 import {fireEvent, render, screen} from '@testing-library/react-native';
-import {Button, MacroRow, Ring, Field, Dock, Screen, Txt} from '../../apps/mobile/src/ui/components';
+import {Button, MacroRow, Ring, Field, Dock, Screen, Txt, Chips} from '../../apps/mobile/src/ui/components';
 import {initialState} from '../../packages/core/state';
 import {router} from 'expo-router';
 jest.mock('../../apps/mobile/src/data/AppProvider',()=>({useApp:()=>({state:mockState,api:{configured:false},identity:null})}));
@@ -46,4 +46,15 @@ test('fallback tab selection navigates without popping its containing stack',()=
 test('dock has a nonzero hit-tested parent and five unique targets',()=>{
  render(<Dock active="recipes"/>);const style=require('react-native').StyleSheet.flatten(screen.getByTestId('cuki-dock').props.style);
  expect(style.height).toBeGreaterThan(80);for(const name of ['home','recipes','register','train','progress'])expect(screen.getAllByTestId('nav-'+name)).toHaveLength(1);
+});
+
+// Horizontal ScrollView defaults to flexGrow:1. In a short exercise results list
+// this used to turn filter chips into ~380dp-tall columns on Android.
+test('filter chips remain intrinsic-height and do not consume vertical free space',()=>{
+ const onChange=jest.fn();render(<Chips options={[{value:'all',label:'Todos'},{value:'chest',label:'Pecho'}]} value="all" onChange={onChange}/>);
+ const rn=require('react-native');const scroll=screen.UNSAFE_getByType(rn.ScrollView);
+ expect(rn.StyleSheet.flatten(scroll.props.style)).toEqual(expect.objectContaining({flexGrow:0,flexShrink:0}));
+ expect(scroll.props.contentContainerStyle.alignItems).toBe('center');
+ expect(scroll.props.keyboardShouldPersistTaps).toBe('handled');
+ fireEvent.press(screen.getByRole('button',{name:'Pecho'}));expect(onChange).toHaveBeenCalledWith('chest');
 });

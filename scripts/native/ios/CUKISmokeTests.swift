@@ -15,7 +15,8 @@ final class CUKISmokeTests: XCTestCase {
         return item
     }
     private func tap(_ id: String, file: StaticString = #filePath, line: UInt = #line) {
-        let item = node(id, file: file, line: line)
+        let item = id.hasPrefix("nav-") ? app.descendants(matching: .any).matching(identifier: id).firstMatch : app.buttons.matching(identifier: id).firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 40), "Missing actionable button: \(id)", file: file, line: line)
         makeHittable(item)
         XCTAssertTrue(item.isHittable, "Element not hittable: \(id)", file: file, line: line)
         item.tap()
@@ -30,7 +31,14 @@ final class CUKISmokeTests: XCTestCase {
         }
     }
     private func fill(_ id: String, _ value: String, file: StaticString = #filePath, line: UInt = #line) {
-        let item = node(id, file: file, line: line)
+        // The visible label and native input share their accessible name. Query the
+        // actual editable element instead of typing into the first matching StaticText.
+        let editable = NSPredicate(format:
+            "(elementType == %d OR elementType == %d OR elementType == %d) AND (identifier == %@ OR label == %@)",
+            Int(XCUIElement.ElementType.textField.rawValue), Int(XCUIElement.ElementType.secureTextField.rawValue),
+            Int(XCUIElement.ElementType.textView.rawValue), id, id)
+        let item = app.descendants(matching: .any).matching(editable).firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 40), "Missing editable input: \(id)", file: file, line: line)
         makeHittable(item)
         XCTAssertTrue(item.isHittable, "Input not hittable: \(id)", file: file, line: line)
         item.tap()
