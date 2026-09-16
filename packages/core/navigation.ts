@@ -26,3 +26,24 @@ export function screenIdentity(name: string, params: RouteParameters = {}): stri
     return value === undefined || value === '' ? [] : [[key, value]];
   })]);
 }
+
+export const tabPaths = {
+  home: '/(tabs)/home', recipes: '/(tabs)/recipes',
+  train: '/(tabs)/train', progress: '/(tabs)/progress',
+} as const;
+export const rootScreenPaths: Readonly<Record<string, string>> = {
+  'SC-07': tabPaths.home, 'SC-23': tabPaths.recipes,
+  'SC-42': tabPaths.train, 'SC-57': tabPaths.progress,
+};
+/** Return locations are internal navigation context, not arbitrary deep-link URLs. */
+export function safeReturnHref(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 4096 || /[\\\x00-\x1f]/.test(value)) return null;
+  const path = value.split(/[?#]/, 1)[0];
+  return /^(?:\/\(tabs\))?\/(?:home|recipes|train|progress)$/.test(path) || /^\/screen\/SC-\d{2}$/.test(path) ? value : null;
+}
+export function originHref(path: string, params: RouteParameters): string {
+  const query = Object.entries(params)
+    .filter(([key, value]) => key !== 'screenId' && key !== 'returnTo' && typeof value === 'string')
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join('&');
+  return safeReturnHref(path + (query ? '?' + query : '')) ?? tabPaths.home;
+}
