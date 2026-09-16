@@ -27,7 +27,7 @@ export const entitySchemas:Record<string,z.ZodType>={
  comment:z.object({id:key,recipeId:key,parentId:key.nullable(),authorId:key,authorName:z.string().max(100),text:z.string().trim().min(1).max(3000),createdAt:instant,state:z.enum(['pending','public','deleted'])}),
  plannedMeal:z.object({id:key,version:z.number().int().positive(),date,meal:z.enum(['breakfast','lunch','snack','dinner']),recipeId:key,recipe:recipeSchema,servings:finite.positive().max(10000)}),
  pantry:z.object({id:key,foodId:key,amount:finite.max(100000),unit:z.enum(['g','ml'])}),
- measurement:z.object({id:key,date,kind:z.enum(['weight','waist','hip','chest']),value:finite.positive().max(1000),unit:z.enum(['kg','cm'])})
+ measurement:z.object({id:key,date,kind:z.enum(['weight','waist','hip','chest']),value:finite.positive().max(1000),unit:z.enum(['kg','cm']),provenance:z.object({provider:z.enum(['healthkit','health_connect']),source:z.string().min(1).max(500),externalId:z.string().min(1).max(500),importedAt:instant}).optional()})
 };
 for(const field of ['savedRecipeIds','votedRecipeIds','followedIds','blockedIds','shoppingChecks'])entitySchemas[field]=z.object({id:key,enabled:z.boolean()});
 export const operation=z.object({id:key,entityType:z.string().refine(s=>Object.hasOwn(entitySchemas,s)),entityId:key,baseVersion:z.number().int().nonnegative(),payload:z.unknown(),deleted:z.boolean(),createdAt:instant,state:z.enum(['pending','conflict','failed']),error:z.string().optional(),remote:z.unknown().optional()});

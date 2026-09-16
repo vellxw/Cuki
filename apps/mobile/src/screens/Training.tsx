@@ -1,3 +1,5 @@
+import {healthWriter,healthName,healthAccountGuard} from '../native/health';
+import {exportWorkoutToHealth} from '../../../../packages/core/health-client';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
@@ -738,14 +740,15 @@ export function WorkoutSummary({
   params
 }: ScreenProps) {
   const {
-    state
+    state,repo
   } = useApp();
   const nav = useNav();
   const task = useTask();
+  const [healthMessage,setHealthMessage]=useState('');
   const session = state.sessions.find(s => s.id === params.id);
   return <Screen title="Resumen de sesión" tab="train" testID="SC-52">{session ? <><Title>{session.name}</Title><Txt tone="secondary">{prettyDate(session.date)} · {statusLabel[session.status]}</Txt><Txt size={28} weight="600">{duration(sessionSeconds(session))}</Txt><Txt>{session.exercises.flatMap(e => e.sets).filter(setValid).length} series de trabajo / actividades válidas</Txt>{session.exercises.map(e => <Section key={e.id} title={state.exercises.find(x => x.id === e.exerciseId)?.name ?? 'Ejercicio'}>{e.sets.filter(s => s.completedAt).map((s, i) => <Row key={s.id} title={`Serie ${i + 1} · ${modeLabel[s.loadMode]}`} subtitle={`${s.load === null ? 'Sin carga externa' : fmt(s.load, 2) + ' kg'} · ${s.reps ?? '—'} reps${s.seconds ? ' · ' + duration(s.seconds) : ''}${s.meters ? ' · ' + fmt(s.meters) + ' m' : ''}${s.rir === null ? '' : ' · RIR ' + s.rir}`} />)}</Section>)}{session.note && <Txt>{session.note}</Txt>}<Message>{sessionQualifies(session) ? 'Esta sesión puede acreditar su semana si cumple las reglas del ciclo. El crédito se confirma en el servidor, no en esta pantalla.' : 'La sesión se conserva. Las series de calentamiento solas no acreditan una semana de jardín.'}</Message><Button title="Ver mi jardín" icon="leaf" onPress={() => nav.go('SC-82', {
         sessionId: session.id
-      })} /><Button title="Exportar sesión" icon="export" variant="secondary" onPress={() => task.run(() => exportText(`cuki-session-${session.id}.json`, JSON.stringify(session, null, 2)))} /><Button title="Volver a Hoy" variant="quiet" onPress={() => nav.tab('home')} /></> : <Empty title="Sesión no disponible" detail="Consultá el historial de la cuenta actual." />}<Message type="error">{task.error}</Message></Screen>;
+      })} /><Button title="Exportar sesión" icon="export" variant="secondary" onPress={() => task.run(() => exportText(`cuki-session-${session.id}.json`, JSON.stringify(session, null, 2)))} /><Button title={`Exportar a ${healthName}`} variant="secondary" disabled={!sessionQualifies(session)} onPress={()=>task.run(async()=>{const result=await exportWorkoutToHealth(repo,session.id,healthWriter,healthAccountGuard(repo.accountId));setHealthMessage(result.alreadyExported?'Esta versión ya fue exportada.':'El sistema confirmó el entrenamiento. Se exportó el intervalo completo, sin inventar calorías.');})}/><Message>{healthMessage}</Message><Button title="Volver a Hoy" variant="quiet" onPress={() => nav.tab('home')} /></> : <Empty title="Sesión no disponible" detail="Consultá el historial de la cuenta actual." />}<Message type="error">{task.error}</Message></Screen>;
 }
 export function Progression({
   params

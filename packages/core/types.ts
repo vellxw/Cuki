@@ -22,7 +22,7 @@ export interface Comment {id:string;recipeId:string;parentId:string|null;authorI
 export interface Collection {id:string;name:string;recipeIds:string[]}
 export interface PlannedMeal {id:string;version:number;date:string;meal:Meal;recipeId:string;recipe:Recipe;servings:number}
 export interface PantryItem {id:string;foodId:string;amount:number;unit:'g'|'ml'}
-export interface Measurement {id:string;date:string;kind:'weight'|'waist'|'hip'|'chest';value:number;unit:'kg'|'cm'}
+export interface Measurement {id:string;date:string;kind:'weight'|'waist'|'hip'|'chest';value:number;unit:'kg'|'cm';provenance?:{provider:'healthkit'|'health_connect';source:string;externalId:string;importedAt:string}}
 export interface PlantInstance {id:string;seed:number;species:string;generatorVersion:string;rendererVersion:string;grownWeeks:number;archivedAt:string|null}
 export interface GardenWeek {index:number;startAt:string;endAt:string;state:'future'|'open'|'credited'|'awaiting_sync'|'missed';credit:{sessionId:string;receivedAt:string}|null}
 export interface GardenChallenge {id:string;version:number;state:'active'|'interrupted'|'ready_to_harvest'|'harvested'|'archived';timezone:string;policyVersion:string;boundaries:string[];serverNow:string;startAt:string;endAt:string;creditedWeeks:number;plant:PlantInstance;weeks:GardenWeek[]}

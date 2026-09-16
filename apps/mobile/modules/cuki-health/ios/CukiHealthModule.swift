@@ -58,7 +58,7 @@ public final class CukiHealthModule: Module {
       let version=rawVersion.intValue
       let start=try self.date(from); let end=try self.date(to)
       guard end > start && end.timeIntervalSince(start) < 7*86400 else { throw HealthInputError("Revisá las fechas de la sesión.") }
-      let config=HKWorkoutConfiguration(); config.activityType = .traditionalStrengthTraining; config.locationType = .unknown
+      let config=HKWorkoutConfiguration(); config.activityType = record["activity"] as? String == "strength" ? .traditionalStrengthTraining : .other; config.locationType = .unknown
       let builder=HKWorkoutBuilder(healthStore:self.store,configuration:config,device:nil)
       try await builder.beginCollection(at:start)
       try await builder.addMetadata([HKMetadataKeySyncIdentifier:"cuki:"+id,HKMetadataKeySyncVersion:version,HKMetadataKeyWasUserEntered:true])

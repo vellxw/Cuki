@@ -106,7 +106,7 @@ class CukiHealthModule : Module() {
       require(id.length in 1..200 && version > 0 && end.isAfter(start) && Duration.between(start,end) < Duration.ofDays(7)) { "Sesión inválida." }
       val zone=ZoneId.systemDefault()
       val item=ExerciseSessionRecord(startTime=start,startZoneOffset=zone.rules.getOffset(start),endTime=end,endZoneOffset=zone.rules.getOffset(end),
-        exerciseType=ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING,
+        exerciseType=if(record["activity"] == "strength") ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING else ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT,
         title=(record["name"] as? String)?.take(200) ?: "Entrenamiento CUKI",
         metadata=Metadata.manualEntry(clientRecordId="cuki:"+id,clientRecordVersion=version))
       val result=api.insertRecords(listOf(item))
