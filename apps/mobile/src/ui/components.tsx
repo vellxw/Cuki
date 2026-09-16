@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState,useContext,useCallback} from 'react';
-import {View,Text,Pressable,ScrollView,TextInput,Switch,StyleSheet,ActivityIndicator,Alert,KeyboardAvoidingView,Platform,Animated,type TextProps,type ViewStyle,type StyleProp,type TextInputProps,useWindowDimensions,AccessibilityInfo} from 'react-native';
+import {View,Text,Pressable,ScrollView,TextInput,Switch,StyleSheet,ActivityIndicator,Alert,KeyboardAvoidingView,Platform,Animated,Easing,type TextProps,type ViewStyle,type StyleProp,type TextInputProps,useWindowDimensions,AccessibilityInfo} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';import {useRouter,useLocalSearchParams,usePathname,useFocusEffect,type Href} from 'expo-router';import {Image} from 'expo-image';import {LinearGradient} from 'expo-linear-gradient';import {BlurView,BlurTargetView} from 'expo-blur';import {GlassView,isLiquidGlassAvailable,isGlassEffectAPIAvailable} from 'expo-glass-effect';import * as Haptics from 'expo-haptics';import Svg,{Circle,Defs,LinearGradient as SVGGradient,Stop} from 'react-native-svg';
 import {useApp} from '../data/AppProvider';import {Icon} from './Icon';import {layout,useTheme,tokens} from './theme';import type {Nutrients} from '../../../../packages/core/types';import {duration,fmt,localDate,prettyDate,validDate} from '../../../../packages/core/utils';
 import {SurfaceBackdrop,useDockBackdrop,type BackdropTarget} from './Backdrop';
@@ -42,19 +42,44 @@ export function Glass({children,style,strong=false,blurTarget}:{children?:React.
  const native=Platform.OS==='ios'&&!reduceTransparency&&isGlassEffectAPIAvailable()&&isLiquidGlassAvailable();
  const base:ViewStyle={borderRadius:strong?999:24,overflow:'hidden'};
  if(native)return <GlassView glassEffectStyle="regular" isInteractive={strong} colorScheme={dark?'dark':'light'} tintColor={strong?undefined:dark?'#0B171150':'#FFFFFF70'} style={[base,style]}>{children}</GlassView>;
- return <View style={[base,{backgroundColor:c.surface,borderWidth:StyleSheet.hairlineWidth,borderColor:strong?(dark?'#90A99B':'#859D8B'):c.line},style]}>
+ return <View style={[base,{backgroundColor:c.surface,borderWidth:StyleSheet.hairlineWidth,borderColor:strong?(dark?'#B8C9BF':'#859D8B'):c.line},style]}>
   {!reduceTransparency&&<View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>
    <BlurView tint={dark?'dark':'light'} intensity={strong?28:35} blurTarget={target??undefined} blurMethod={Platform.OS==='android'&&target?'dimezisBlurViewSdk31Plus':'none'} style={StyleSheet.absoluteFill}/>
-   <View style={[StyleSheet.absoluteFill,{backgroundColor:dark?'rgba(8,17,13,.64)':'rgba(248,250,246,.50)'}]}/>
-   <LinearGradient colors={dark?['rgba(220,240,231,.09)','rgba(15,25,20,0)','rgba(217,228,225,.025)']:['rgba(255,255,255,.65)','rgba(247,251,247,.15)']} style={StyleSheet.absoluteFill}/>
-   {strong&&<View style={[StyleSheet.absoluteFill,{borderWidth:1,borderColor:dark?'rgba(225,238,228,.27)':'rgba(255,255,255,.9)',borderRadius:999,margin:1}]}/>}
+   <View style={[StyleSheet.absoluteFill,{backgroundColor:dark?(strong?'rgba(8,17,13,.28)':'rgba(8,17,13,.56)'):'rgba(248,250,246,.50)'}]}/>
+   <LinearGradient colors={dark?(strong?['rgba(237,246,238,.32)','rgba(203,226,213,.07)','rgba(18,27,22,.02)','rgba(225,235,227,.16)']:['rgba(220,240,231,.09)','rgba(15,25,20,0)','rgba(217,228,225,.025)']):['rgba(255,255,255,.65)','rgba(247,251,247,.15)']} style={StyleSheet.absoluteFill}/>
+   {strong&&<View style={[StyleSheet.absoluteFill,{borderWidth:1,borderColor:dark?'rgba(234,245,237,.44)':'rgba(255,255,255,.9)',borderRadius:999,margin:1}]}/>}
   </View>}
   {children}
  </View>;
 }
-export function Button({title,onPress,icon,variant='primary',busy=false,disabled=false,style,testID,accessibilityLabel}:{title:string;onPress:()=>unknown;icon?:string;variant?:'primary'|'secondary'|'quiet'|'danger';busy?:boolean;disabled?:boolean;style?:StyleProp<ViewStyle>;testID?:string;accessibilityLabel?:string}){const {c,reduceMotion}=useTheme();const a=useRef(new Animated.Value(1)).current;const move=(to:number)=>{if(!reduceMotion)Animated.timing(a,{toValue:to,duration:tokens.motion.press,useNativeDriver:true}).start()};const inner=<View style={{paddingHorizontal:variant==='quiet'?10:22,minHeight:variant==='primary'?58:48,flexDirection:'row',gap:10,alignItems:'center',justifyContent:'center'}}>{busy?<ActivityIndicator color={c.text}/>:icon?<Icon name={icon} color={variant==='danger'?c.error:c.text} size={variant==='primary'?24:19}/>:null}<Txt size={variant==='primary'?18:15} weight={variant==='primary'?'600':'500'} tone={variant==='danger'?'error':variant==='quiet'?'secondary':'text'} style={{flexShrink:1,textAlign:'center'}}>{title}</Txt></View>;return <Animated.View style={[{transform:[{scale:a}],opacity:disabled?.44:1},style]}><Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel??title} accessibilityState={{disabled:disabled||busy,busy}} disabled={disabled||busy} testID={testID} onPressIn={()=>move(.978)} onPressOut={()=>move(1)} onPress={()=>{void Haptics.selectionAsync().catch(()=>{});onPress()}}>{variant==='quiet'?inner:variant==='danger'?<View style={{borderRadius:26,borderWidth:1,borderColor:c.error}}>{inner}</View>:<Glass strong={variant==='primary'} style={variant==='secondary'?{borderRadius:999}:undefined}>{inner}</Glass>}</Pressable></Animated.View>}
+/** The material compresses; glyphs only translate and retain their original shape.
+ * The hit target stays fixed, and every cancellation/release restores the surface.
+ */
+export function Button({title,onPress,icon,variant='primary',busy=false,disabled=false,compact=false,style,testID,accessibilityLabel}:{title:string;onPress:()=>unknown;icon?:string;variant?:'primary'|'secondary'|'quiet'|'danger';busy?:boolean;disabled?:boolean;compact?:boolean;style?:StyleProp<ViewStyle>;testID?:string;accessibilityLabel?:string}) {
+ const {c,reduceMotion}=useTheme();
+ const pressure=useRef(new Animated.Value(0)).current;
+ const locked=disabled||busy;
+ const settle=useCallback((pressed:boolean)=>{
+  pressure.stopAnimation();
+  if(reduceMotion){pressure.setValue(0);return;}
+  if(pressed)Animated.timing(pressure,{toValue:1,duration:90,easing:Easing.out(Easing.quad),useNativeDriver:true}).start();
+  else Animated.spring(pressure,{toValue:0,stiffness:420,damping:28,mass:.55,restDisplacementThreshold:.001,restSpeedThreshold:.001,useNativeDriver:true}).start();
+ },[pressure,reduceMotion]);
+ useEffect(()=>{if(locked||reduceMotion){pressure.stopAnimation();pressure.setValue(0)}return()=>pressure.stopAnimation()},[locked,reduceMotion,pressure]);
+ const translateY=pressure.interpolate({inputRange:[0,1],outputRange:[0,1.8]});
+ return <View style={style}><Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel??title} accessibilityState={{disabled:locked,busy}} disabled={locked} testID={testID}
+  onPressIn={()=>settle(true)} onPressOut={()=>settle(false)} onPress={()=>{void Haptics.selectionAsync().catch(()=>{});onPress()}}>
+  {variant!=='quiet'&&<Animated.View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants" style={[StyleSheet.absoluteFill,{transform:[{translateY},{scaleX:pressure.interpolate({inputRange:[0,1],outputRange:[1,1.012]})},{scaleY:pressure.interpolate({inputRange:[0,1],outputRange:[1,.948]})}]}]}>
+   {variant==='danger'?<View style={[StyleSheet.absoluteFill,{borderRadius:26,borderWidth:1,borderColor:c.error}]}/>:<Glass strong={variant==='primary'} style={{flex:1,borderRadius:999}}/>}
+  </Animated.View>}
+  <Animated.View style={{paddingHorizontal:variant==='quiet'?10:compact?14:22,minHeight:variant==='primary'&&!compact?58:48,flexDirection:'row',gap:8,alignItems:'center',justifyContent:'center',transform:[{translateY}],opacity:disabled?.48:1}}>
+   {busy?<ActivityIndicator color={c.text}/>:icon?<Icon name={icon} color={variant==='danger'?c.error:c.text} size={variant==='primary'&&!compact?24:19}/>:null}
+   <Txt size={variant==='primary'&&!compact?18:15} weight={variant==='primary'?'600':'500'} tone={variant==='danger'?'error':variant==='quiet'?'secondary':'text'} style={{flexShrink:1,textAlign:'center'}}>{title}</Txt>
+  </Animated.View>
+ </Pressable></View>;
+}
 export function IconButton({name,label,onPress,selected=false}:{name:string;label:string;onPress:()=>unknown;selected?:boolean}){const {c}=useTheme();return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{selected}} onPress={()=>onPress()} style={{width:48,height:48,alignItems:'center',justifyContent:'center',borderRadius:24,backgroundColor:selected?c.line:'transparent'}}><Icon name={name} color={selected?c.protein:c.text}/></Pressable>}
-export function Screen({title,subtitle,children,back=true,dock=true,tab,background=false,testID,headerRight}:{title?:string;subtitle?:string;children?:React.ReactNode;back?:boolean;dock?:boolean;tab?:TabName;background?:boolean;testID?:string;headerRight?:React.ReactNode}) {
+export function Screen({title,subtitle,children,back=true,dock=true,tab,background=false,testID,headerRight,contentStyle,titleSize}:{title?:string;subtitle?:string;children?:React.ReactNode;back?:boolean;dock?:boolean;tab?:TabName;background?:boolean;testID?:string;headerRight?:React.ReactNode;contentStyle?:StyleProp<ViewStyle>;titleSize?:number}) {
  const {c,dark}=useTheme(),nav=useNav(),safe=useSafeAreaInsets();
  const backgroundRef=useRef<View|null>(null),contentRef=useRef<View|null>(null);
  const {register}=useDockBackdrop();
@@ -69,8 +94,8 @@ export function Screen({title,subtitle,children,back=true,dock=true,tab,backgrou
      {background&&<><Image source={art.clean} contentFit="cover" style={StyleSheet.absoluteFill} accessible={false}/><LinearGradient colors={dark?['rgba(5,10,8,.64)','rgba(4,10,7,.24)','rgba(4,10,7,.85)']:['rgba(248,247,241,.90)','rgba(248,247,241,.94)']} style={StyleSheet.absoluteFill}/></>}
     </BlurTargetView>
     <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}>
-     <ScrollView testID="screen-scroll" style={{flex:1}} contentInsetAdjustmentBehavior="never" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{paddingTop:safe.top+12,paddingHorizontal:20,paddingBottom:tab?115+safe.bottom:32+safe.bottom,gap:18,flexGrow:1}}>
-      {(title||back||headerRight)&&<View style={[layout.row,{alignItems:'flex-start'}]}>{back&&<IconButton name="back" label="Volver" onPress={nav.back}/>}<View style={{flex:1,paddingTop:back?5:3}}>{title&&<Txt size={back?24:32} weight="600">{title}</Txt>}{subtitle&&<Txt tone="secondary" size={14} style={{marginTop:5}}>{subtitle}</Txt>}</View>{headerRight}</View>}
+     <ScrollView testID="screen-scroll" style={{flex:1}} contentInsetAdjustmentBehavior="never" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={[{paddingTop:safe.top+12,paddingHorizontal:20,paddingBottom:tab?115+safe.bottom:32+safe.bottom,gap:18,flexGrow:1},contentStyle]}>
+      {(title||back||headerRight)&&<View style={[layout.row,{alignItems:'flex-start'}]}>{back&&<IconButton name="back" label="Volver" onPress={nav.back}/>}<View style={{flex:1,paddingTop:back?5:3}}>{title&&<Txt size={titleSize??(back?24:32)} weight="600">{title}</Txt>}{subtitle&&<Txt tone="secondary" size={14} style={{marginTop:5}}>{subtitle}</Txt>}</View>{headerRight}</View>}
       {children}
      </ScrollView>
      <KeyboardDismissBar/>

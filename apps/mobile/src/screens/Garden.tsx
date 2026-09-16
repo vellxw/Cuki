@@ -39,12 +39,12 @@ export function Garden() {
   const weeks=active?g.creditedWeeks:0,summary=gardenSummary(state),compact=width<370||fontScale>1.3;
   const counted=state.plants.filter(p=>p.archivedAt||p.grownWeeks===52);
   const currentWeek=g?.weeks.find(w=>Date.parse(g.serverNow)>=Date.parse(w.startAt)&&Date.parse(g.serverNow)<Date.parse(w.endAt))?.index??Math.min(52,weeks+1);
-  return <Screen back={false} title="Tu jardín" subtitle="Disciplina hoy, una mejor versión mañana." tab="progress" background testID="SC-79" headerRight={<Button title="Perfil" icon="user" variant="quiet" onPress={()=>nav.go('SC-68')}/>}>
-    <View style={{minHeight:compact?420:330,overflow:'visible',justifyContent:'flex-end',gap:9,paddingBottom:4}}>
-      <View pointerEvents="none" style={compact?{position:'absolute',top:-30,right:-15,width:'82%',height:350}:{position:'absolute',top:-86,left:'34%',right:-25,height:425}}><Plant seed={active?g.plant.seed:state.localPlantSeed} weeks={weeks} height={compact?350:425}/></View>
+  return <Screen back={false} title="Tu jardín" subtitle="Disciplina hoy, una mejor versión mañana." tab="progress" background testID="SC-79" contentStyle={{gap:13}} headerRight={<Button title="Perfil" icon="user" variant="quiet" onPress={()=>nav.go('SC-68')}/>}>
+    <View style={{minHeight:compact?390:274,overflow:'visible',justifyContent:'flex-end',gap:9,paddingBottom:4}}>
+      <View pointerEvents="none" style={compact?{position:'absolute',top:-30,right:-15,width:'82%',height:350}:{position:'absolute',top:-84,left:'34%',right:-25,height:370}}><Plant seed={active?g.plant.seed:state.localPlantSeed} weeks={weeks} height={compact?350:370}/></View>
       <View style={[layout.row,{gap:7}]}><Icon name="leaf" size={18} color={c.protein}/><Txt size={12} tone="secondary">{active?`${weeks} de 52 semanas`:'Tu próxima historia'}</Txt></View>
-      <Txt size={35} weight="600" style={{maxWidth:compact?'90%':'65%'}}>{active?`Semana ${weeks}`:'Una semilla, un comienzo'}</Txt>
-      {active&&<Txt size={23} tone="secondary">{weeks} / 52</Txt>}
+      <Txt size={31} weight="600" style={{maxWidth:compact?'90%':'65%'}}>{active?`Semana ${weeks}`:'Una semilla, un comienzo'}</Txt>
+      {active&&<Txt size={20} tone="secondary">{weeks} / 52</Txt>}
       {active&&<GrowthTimeline weeks={g.weeks} onPress={()=>nav.go('SC-81',{week:String(currentWeek)})}/>}
       <Txt size={14} tone="secondary" style={{maxWidth:compact?'90%':'64%'}}>{g?.state==='interrupted'?'Tu planta se conserva. Podés elegir cómo seguir.':g?.state==='ready_to_harvest'?'Completaste el ciclo. Tu planta está lista para guardar.':active?'Una sesión esta semana mantiene tu crecimiento.':'Plantá tu ciclo cuando estés listo.'}</Txt>
     </View>
@@ -54,20 +54,20 @@ export function Garden() {
         <GardenMetric icon="train" value={fmt(summary.sessionsPerWeek,1)} label="sesiones / semana registradas" bars={summary.weeklySessions}/>
         <GardenMetric icon="progress" value={summary.comparableLoadChange===null?'—':`${summary.comparableLoadChange>0?'+':''}${fmt(summary.comparableLoadChange)}%`} label="carga en press · 8 rep." bars={summary.comparableLoads.slice(-7)}/>
       </View>
-      {g.state==='ready_to_harvest'?<Button title="Tu planta está lista" icon="leaf" onPress={()=>nav.go('SC-84')}/>:g.state==='interrupted'?<Button title="Conservar y elegir cómo seguir" onPress={()=>nav.go('SC-83')}/>:<Button title="Registrar un entrenamiento" icon="train" variant="quiet" onPress={()=>nav.tab('train')}/>}
+      {g.state==='ready_to_harvest'?<Button title="Tu planta está lista" icon="leaf" onPress={()=>nav.go('SC-84')}/>:g.state==='interrupted'?<Button title="Conservar y elegir cómo seguir" onPress={()=>nav.go('SC-83')}/>:null}
     </>:<><Message>Un entrenamiento por semana durante 52 semanas consecutivas. Al cerrar el ciclo, guardás tu planta y ganás una moneda por un mes de Plus. También en Gratis.</Message><Button title="Plantar mi primer ciclo" icon="leaf" onPress={()=>nav.go('SC-80')}/></>}
     <Section title="Mi jardín" action={`${counted.length} plantas`} onAction={()=>nav.go('SC-86')}>
-      <View style={{flexDirection:'row',gap:10,flexWrap:'wrap'}}>{counted.slice(0,3).map(p=><Pressable key={p.id} accessibilityRole="button" accessibilityLabel={`Ver planta ${p.species}, ${p.grownWeeks} semanas`} onPress={()=>nav.go('SC-86',{plantId:p.id})} style={{flex:1,minWidth:88,gap:6}}><Glass style={{padding:4,borderRadius:20}}><PlantLite seed={p.seed} weeks={p.grownWeeks} height={108}/></Glass><Txt size={12} style={{textAlign:'center'}}>{p.grownWeeks===52?'Completada':'Conservada'}</Txt><Txt size={11} tone="secondary" style={{textAlign:'center'}}>{p.grownWeeks} semanas</Txt></Pressable>)}</View>
+      <View style={{flexDirection:'row',gap:10,flexWrap:'wrap'}}>{counted.slice(0,3).map(p=><Pressable key={p.id} accessibilityRole="button" accessibilityLabel={`Ver planta ${p.species}, ${p.grownWeeks} semanas`} onPress={()=>nav.go('SC-86',{plantId:p.id})} style={{flex:1,minWidth:88,gap:6}}><Glass style={{padding:4,borderRadius:20}}><PlantLite seed={p.seed} weeks={p.grownWeeks} height={88}/></Glass><Txt size={12} style={{textAlign:'center'}}>{p.grownWeeks===52?'Completada':'Conservada'}</Txt><Txt size={11} tone="secondary" style={{textAlign:'center'}}>{p.grownWeeks} semanas</Txt></Pressable>)}</View>
       {!counted.length&&<Txt tone="secondary" size={13}>Las plantas que completes o conserves van a vivir acá.</Txt>}
     </Section>
-    <View style={layout.wrap}><Button title="Mis monedas" icon="coin" variant="quiet" onPress={()=>nav.go('SC-88')}/><Button title="Actualizar jardín" icon="refresh" variant="quiet" onPress={()=>task.run(async()=>{await q.refetch();await cloud.collection();})}/></View>
+    <View style={layout.wrap}><Button title="Entrenar" icon="train" variant="quiet" onPress={()=>nav.tab('train')}/><Button title="Mis monedas" icon="coin" variant="quiet" onPress={()=>nav.go('SC-88')}/><Button title="Actualizar jardín" icon="refresh" variant="quiet" onPress={()=>task.run(async()=>{await q.refetch();await cloud.collection();})}/></View>
     {active&&<Txt size={11} tone="secondary">Las estadísticas usan tus registros disponibles. La carga compara series de 8 repeticiones en el mismo press inclinado; no es una medición de fuerza fisiológica.</Txt>}
     <CloudNotice/><Message type="error">{task.error??q.error?.message}</Message>
   </Screen>;
 }
 function GardenMetric({icon,value,label,bars}:{icon:string;value:string;label:string;bars:number[]}){
  const {c}=useTheme(),max=Math.max(1,...bars);
- return <Glass style={{flex:1,padding:13,minHeight:126,gap:5,borderRadius:23}}><Icon name={icon} size={19} color={icon==='leaf'?c.protein:c.text}/><Txt size={29} weight="600">{value}</Txt><Txt size={11} tone="secondary">{label}</Txt><View style={{flexDirection:'row',gap:5,alignItems:'flex-end',height:26,marginTop:4}}>{bars.slice(-7).map((n,i)=><View key={i} style={{flex:1,maxWidth:6,height:Math.max(2,24*n/max),borderRadius:4,backgroundColor:icon==='train'?c.carbs:c.protein,opacity:n>0?.85:.25}}/>)}</View></Glass>;
+ return <Glass style={{flex:1,padding:12,minHeight:104,gap:3,borderRadius:21}}><Icon name={icon} size={19} color={icon==='leaf'?c.protein:c.text}/><Txt size={26} weight="600">{value}</Txt><Txt size={11} tone="secondary">{label}</Txt><View style={{flexDirection:'row',gap:5,alignItems:'flex-end',height:20,marginTop:3}}>{bars.slice(-7).map((n,i)=><View key={i} style={{flex:1,maxWidth:6,height:Math.max(2,19*n/max),borderRadius:4,backgroundColor:icon==='train'?c.carbs:c.protein,opacity:n>0?.85:.25}}/>)}</View></Glass>;
 }
 export function EnrollGarden() {
   const {

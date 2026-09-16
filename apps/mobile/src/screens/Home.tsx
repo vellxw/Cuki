@@ -28,12 +28,12 @@ export function Home({params = {}}: Partial<ScreenProps>) {
     {label: 'C', key: 'carbs' as const, color: c.carbs},
     {label: 'G', key: 'fat' as const, color: c.fat},
   ];
-  return <Screen back={false} dock={false} tab="home" background testID="SC-07">
-    <View style={[layout.between, {paddingTop: 10, alignItems: 'flex-start'}]}>
+  return <Screen back={false} dock={false} tab="home" background testID="SC-07" contentStyle={{gap:14}}>
+    <View style={[layout.between, {paddingTop: 2, alignItems: 'flex-start'}]}>
       <View style={{flex: 1}}>
-        <Txt size={26}>Buenos días{state.profile.name ? ',' : ''}</Txt>
-        {state.profile.name && <Txt size={34} weight="600">{state.profile.name}</Txt>}
-        <Txt tone="secondary" size={13} style={{marginTop: 8}}>Disciplina hoy,{"\n"}un mejor mañana.</Txt>
+        <Txt size={23} style={{lineHeight:28}}>Buenos días{state.profile.name ? ',' : ''}</Txt>
+        {state.profile.name && <Txt size={31} weight="600" style={{lineHeight:35}}>{state.profile.name}</Txt>}
+        <Txt tone="secondary" size={12} style={{marginTop: 7,lineHeight:16}}>Disciplina hoy,{"\n"}un mejor mañana.</Txt>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="Abrir perfil y ajustes" onPress={() => nav.go('SC-68')}
         style={{width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.line,
@@ -42,9 +42,9 @@ export function Home({params = {}}: Partial<ScreenProps>) {
       </Pressable>
     </View>
     <View testID="home-hero" style={{flexDirection: collapsed ? 'column' : 'row', gap: 12,
-      alignItems: collapsed ? 'stretch' : 'flex-start', minHeight: collapsed ? undefined : garden ? 244 : 258,
-      marginTop: 14}}>
-      <View style={{flex: collapsed ? undefined : 1, gap: 12, alignItems: collapsed ? 'center' : 'flex-start'}}>
+      alignItems: collapsed ? 'stretch' : 'flex-start', minHeight: collapsed ? undefined : garden ? 236 : 244,
+      marginTop: 2}}>
+      <View style={{flex: collapsed ? undefined : 1, gap: 8, alignItems: collapsed ? 'center' : 'flex-start'}}>
         <Pressable accessibilityRole="button" accessibilityLabel="Abrir diario de nutrición" onPress={() => nav.go('SC-08')}
           style={{flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44}}>
           <Icon name="nutrition" color={c.text} size={17}/><Txt size={12}>Nutrición de hoy</Txt><Icon name="chevron" size={13}/>
@@ -67,13 +67,13 @@ export function Home({params = {}}: Partial<ScreenProps>) {
         </View>
       </View>
       {!state.profile.hideGarden && <View style={{flex:collapsed?undefined:1.08,alignItems:'center',
-        minHeight:collapsed?undefined:244,overflow:'visible'}}>
+        minHeight:collapsed?undefined:236,overflow:'visible'}}>
         <View pointerEvents="none" style={collapsed ? {width:'100%',height:286} :
-          {position:'absolute',top:-82,left:-10,right:-8,height:310}}>
+          {position:'absolute',top:-80,left:-15,right:-15,height:310}}>
           <Plant seed={garden?.plant.seed??state.localPlantSeed} weeks={week} height={collapsed?286:310}/>
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel="Ver tu jardín" onPress={() => nav.go('SC-79')}
-          style={{alignSelf:'stretch',gap:7,marginTop:collapsed?0:150,minHeight:80}}>
+          style={{alignSelf:'stretch',gap:7,marginTop:collapsed?0:146,minHeight:80}}>
           <View style={[layout.row,{gap:7}]}><Icon name="leaf" color={c.protein} size={17}/><Txt size={14}>Tu planta</Txt></View>
           <Txt size={12} tone="secondary">{garden?`Semana ${week} de 52`:'Tu historia empieza con una semilla'}</Txt>
           <View style={{height:6,borderRadius:6,backgroundColor:c.line,overflow:'hidden'}}>
@@ -86,12 +86,12 @@ export function Home({params = {}}: Partial<ScreenProps>) {
     </View>
     <Button title="Registrar +" icon="plus" onPress={() => nav.register({date:state.selectedDate})} testID="home-register"
       style={{alignSelf:'center',width:collapsed?'100%':'70%',minWidth:220,marginTop:0,marginBottom:4}}/>
-    <View style={{borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:c.line,paddingTop:20,gap:10}}>
+    <View style={{borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:c.line,paddingTop:16,gap:7}}>
       <View style={layout.row}><Icon name="train" size={18}/><Txt size={13} tone="secondary">{active?'Sesión en curso':'Siguiente entrenamiento'}</Txt></View>
-      <Txt size={25} weight="600">{active?active.name:plan?plan.days[0]?.name??plan.name:'Construí tu rutina'}</Txt>
+      <Txt size={23} weight="600">{active?active.name:plan?plan.days[0]?.name??plan.name:'Construí tu rutina'}</Txt>
       <Txt size={13} tone="secondary">{active?`${active.exercises.length} ejercicios · tus series están guardadas`:plan?
         `${plan.days[0]?.exercises.length??0} ejercicios · plan manual`:'Elegí ejercicios, series y días a tu medida.'}</Txt>
-      <Button title={active?'Reanudar sesión':plan?'Ver rutina':'Crear rutina'} icon="arrow" variant="secondary"
+      <Button title={active?'Reanudar sesión':plan?'Ver rutina':'Crear rutina'} icon="arrow" variant="secondary" testID="home-next-workout"
         onPress={() => active?nav.go(active.restDeadline?'SC-48':'SC-47',{id:active.id}):plan?nav.go('SC-42',{planId:plan.id}):nav.go('SC-44')}
         style={{alignSelf:'flex-start'}}/>
     </View>
