@@ -129,7 +129,8 @@ def tap_scrolled(identifier):
     tap(identifier)
 
 
-report = {'package': PACKAGE, 'sourceCommit': os.environ.get('GITHUB_SHA'), 'checks': [],
+report = {'package': PACKAGE, 'sourceCommit': os.environ.get('CUKI_BINARY_SOURCE_SHA') or os.environ.get('GITHUB_SHA'),
+          'harnessCommit': os.environ.get('GITHUB_SHA'), 'checks': [],
           'startedAt': time.time(), 'infrastructureEvents': infra_events, 'scope': 'native guest navigation, food persistence and superset workout recovery; not visual-fidelity or provider approval'}
 try:
     apk = pathlib.Path('apps/mobile/android/app/build/outputs/apk/release/app-release.apk')
