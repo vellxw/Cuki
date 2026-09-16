@@ -47,7 +47,7 @@ def matches(node, identifier):
                for key, value in node.attrib.items() if key in ('resource-id', 'content-desc', 'text'))
 
 
-def wait_node(identifier, timeout=45):
+def wait_node(identifier, timeout=45, predicate=lambda node: True):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
         try:
@@ -55,7 +55,7 @@ def wait_node(identifier, timeout=45):
             if recover_launcher_dialog(text):
                 continue
             for node in ET.fromstring(text).iter('node'):
-                if matches(node, identifier):
+                if matches(node, identifier) and predicate(node):
                     (OUTPUT / 'last-hierarchy.xml').write_text(text)
                     return node
         except (subprocess.CalledProcessError, ET.ParseError):
@@ -65,7 +65,7 @@ def wait_node(identifier, timeout=45):
 
 
 def tap(identifier):
-    node = wait_node(identifier)
+    node = wait_node(identifier, predicate=lambda item: item.get('clickable') == 'true' and item.get('enabled') != 'false')
     numbers = [int(v) for v in re.findall(r'\d+', node.attrib['bounds'])]
     assert len(numbers) == 4, 'Invalid native bounds: ' + identifier
     x1, y1, x2, y2 = numbers
@@ -119,8 +119,14 @@ try:
     report['checks'].append('four-distinct-destination-screen-roots')
     tap('nav-home'); wait_node('SC-07'); tap('home-register'); wait_node('SC-09')
     tap('Buscar alimento'); wait_node('SC-10')
-    tap('Alimento o ingrediente'); adb('shell', 'input', 'text', 'Pechuga')
-    adb('shell', 'input', 'keyevent', 'KEYCODE_BACK')
+    tap('Alimento o ingrediente')
+    wait_node('Alimento o ingrediente', predicate=lambda n: n.get('class') == 'android.widget.EditText' and n.get('focused') == 'true')
+    adb('shell', 'input', 'text', 'Pechuga')
+    wait_node('Alimento o ingrediente', predicate=lambda n: n.get('class') == 'android.widget.EditText' and n.get('text') == 'Pechuga')
+    # Select the result directly, as a person does. An unconditional Back pops the
+    # screen when a hardware keyboard means no software IME was opened.
+    wait_node('Pechuga de pollo asada', predicate=lambda n: n.get('clickable') == 'true')
+    capture('05b-food-search')
     name = 'Pechuga de pollo asada'
     # Read the actual editorial item label instead of assuming its punctuation.
     candidates = [n for n in ET.fromstring(hierarchy()).iter('node')

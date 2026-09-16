@@ -20,3 +20,15 @@ test('plant descriptors are deterministic, unique per seed and growth is monoton
 test('calendar month and monthly quota anchors do not drift on short months',()=>{assert.equal(addCalendarMonth('2028-01-31T12:00:00.000Z'),'2028-02-29T12:00:00.000Z');assert.equal(quotaPeriod('2026-01-31T12:00:00.000Z',new Date('2026-03-31T13:00:00Z')),'2026-03-31T12:00:00.000Z');assert.equal(quotaPeriod('2026-01-31T12:00:00.000Z',new Date('2026-03-30T13:00:00Z')),'2026-02-28T12:00:00.000Z');});
 test('GTIN check digit accepts known valid code and rejects an arbitrary QR',()=>{assert.equal(validGTIN('4006381333931'),true);assert.equal(validGTIN('4006381333932'),false);assert.equal(validGTIN('https://example.com/'),false);});
 test('SQLite commands persist atomically, replay operation once, and separate accounts',async()=>{const sql=sqlite();try{const a=new ClientRepo(sql.driver,'alice','UTC');await a.init();await a.dispatchMany([{type:'profile',profile:{name:'Alicia'}}],'op-profile',now);await a.dispatchMany([{type:'profile',profile:{name:'Alicia'}}],'op-profile',now);const again=new ClientRepo(sql.driver,'alice','UTC');await again.init();assert.equal(again.getSnapshot().profile.name,'Alicia');assert.equal(again.getSnapshot().outbox.length,1);const b=new ClientRepo(sql.driver,'bob','UTC');await b.init();assert.equal(b.getSnapshot().profile.name,'');assert.equal(b.getSnapshot().outbox.length,0);}finally{sql.close();}});
+test('after local deletion, new guest records persist again instead of updating a missing row',async()=>{
+ const sql=sqlite();try{
+  const repo=await new ClientRepo(sql.driver,'guest','UTC').init();
+  const first=entryFromFood(repo.getSnapshot().foods[0],100,repo.getSnapshot().selectedDate,'lunch','UTC');
+  await repo.dispatch({type:'entry',entry:first});await repo.removeLocal();
+  assert.equal(repo.getSnapshot().diary.length,0);
+  const next=entryFromFood(repo.getSnapshot().foods[1],250,repo.getSnapshot().selectedDate,'dinner','UTC');
+  await repo.dispatch({type:'entry',entry:next});
+  const reopened=await new ClientRepo(sql.driver,'guest','UTC').init();
+  assert.equal(reopened.getSnapshot().diary.length,1);assert.equal(reopened.getSnapshot().diary[0].id,next.id);
+ }finally{sql.close()}
+});

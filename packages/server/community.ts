@@ -32,3 +32,18 @@ export async function moderate(db:Database,staff:Actor,mid:string,body:unknown,n
  await saveEntity(tx,ticket.actor_id,ticket.entity_type,ticket.entity_id,payload,entity.version,b.decision==='reject'&&ticket.entity_type==='comment',now.toISOString());await tx.query('UPDATE moderation SET state=$1,reason=$2 WHERE id=$3',[b.decision,b.reason,mid]);await writeAudit(tx,ticket.actor_id,'moderation.'+b.decision,entity.id,now.toISOString(),{version:entity.version,reason:b.reason},staff.id);return{reviewed:true};});
 }
 export async function appeal(db:Database,actor:Actor,mid:string,body:unknown,now=new Date()){const b=parseBody(z.object({reason:z.string().min(5).max(3000)}),body);return asActor(db,actor,async tx=>{const ticket=(await tx.query('SELECT * FROM moderation WHERE id=$1 AND actor_id=$2',[mid,actor.id])).rows[0];need(ticket&&ticket.state!=='pending','No hay una decisión apelable.',404);const rid=id();await tx.query('INSERT INTO reports(id,actor_id,target_type,target_id,reason,details,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)',[rid,actor.id,'moderation',mid,'appeal',b.reason,now.toISOString()]);return{id:rid,state:'open'};});}
+
+/** Return only versions this actor can read. Private source history never becomes
+ * public merely because the current product was reviewed. */
+export async function foodVersions(db: Database, actor: Actor, fid: string): Promise<Food[]> {
+  const current = await foodDetail(db, actor, fid);
+  if (current.state === 'editorial') return [current];
+  return asActor(db, actor, async tx => {
+    const rows = (await tx.query<{payload: Food}>(
+      "SELECT payload FROM entity_history WHERE entity_type='food' AND id=$1 AND actor_id=$2 AND NOT deleted ORDER BY version DESC LIMIT 200",
+      [fid, current.ownerId ?? actor.id])).rows;
+    const available = new Map<number, Food>(rows.map(row => [row.payload.version, row.payload]));
+    available.set(current.version, current);
+    return [...available.values()].sort((a, b) => b.version - a.version);
+  });
+}

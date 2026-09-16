@@ -16,6 +16,9 @@ FileUtils.mkdir_p(directory)
 FileUtils.cp(File.join(__dir__, 'CUKISmokeTests.swift'), directory)
 target.add_file_references([group.new_file('CUKISmokeTests.swift')])
 target.build_configurations.each do |config|
+  config.build_settings['PRODUCT_NAME'] = 'CUKISmokeTests'
+  config.build_settings['PRODUCT_MODULE_NAME'] = 'CUKISmokeTests'
+  config.build_settings['EXECUTABLE_NAME'] = 'CUKISmokeTests'
   config.build_settings['SWIFT_VERSION'] = '5.0'
   config.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.cuki.app.test.uitests'
   config.build_settings['TEST_TARGET_NAME'] = app.name

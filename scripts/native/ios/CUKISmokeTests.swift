@@ -38,7 +38,8 @@ final class CUKISmokeTests: XCTestCase {
         tap("nav-progress"); _ = node("SC-57"); capture("05-progress")
         tap("nav-home"); _ = node("Nutrición de hoy")
         tap("home-register"); tap("Buscar alimento")
-        let search = node("Alimento o ingrediente")
+        let search = app.textFields.matching(identifier: "Alimento o ingrediente").firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 20))
         search.tap(); search.typeText("Pechuga")
         let food = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Pechuga")).firstMatch
         XCTAssertTrue(food.waitForExistence(timeout: 20)); let title = food.label; food.tap()
