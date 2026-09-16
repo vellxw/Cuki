@@ -164,11 +164,9 @@ try:
     wait_node('Pechuga de pollo asada', predicate=lambda n: n.get('clickable') == 'true')
     capture('05b-food-search')
     name = 'Pechuga de pollo asada'
-    # Read the actual editorial item label instead of assuming its punctuation.
-    candidates = [n for n in ET.fromstring(hierarchy()).iter('node')
-                  if 'Pechuga' in n.get('content-desc', '') and n.get('clickable') == 'true']
-    assert len(candidates) == 1, 'Expected one selected editorial chicken source'
-    name = candidates[0].get('content-desc')
+    # Multiple cooking methods are distinct valid foods. Select the exact reviewed
+    # source instead of asserting that a broad search returns only one candidate.
+    wait_node(name, predicate=lambda n: n.get('clickable') == 'true')
     tap(name); wait_node('SC-11'); scroll_to('food-portion'); tap('food-portion')
     wait_node('SC-12'); assert wait_node('portion-amount').get('text') == '100'
     scroll_to('portion-save'); tap('portion-save'); wait_node('SC-07')

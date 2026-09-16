@@ -34,9 +34,31 @@ final class CUKISmokeTests: XCTestCase {
         makeHittable(item)
         XCTAssertTrue(item.isHittable, "Input not hittable: \(id)", file: file, line: line)
         item.tap()
-        let existing = item.value as? String ?? ""
-        if !existing.isEmpty { item.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count)) }
-        item.typeText(value)
+        // A first-use iOS keyboard tutorial can intercept typed characters. Handle
+        // ONLY its known system container; never dismiss arbitrary application alerts.
+        let introduction = app.descendants(matching: .any).matching(identifier: "UIContinuousPathIntroductionView").firstMatch
+        if introduction.waitForExistence(timeout: 2) {
+            capture("system-keyboard-introduction")
+            let proceed = introduction.buttons["Continue"]
+            XCTAssertTrue(proceed.exists && proceed.isHittable, file: file, line: line)
+            proceed.tap()
+            XCTAssertFalse(introduction.exists, file: file, line: line)
+            item.tap()
+        }
+        let raw = item.value as? String ?? ""
+        let existing = raw == item.placeholderValue ? "" : raw
+        if !existing.isEmpty {
+            item.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
+        }
+        // Wait for each controlled native input update before sending the next key.
+        // This still types through the OS and fails if a character is lost or changed.
+        var expected = ""
+        for character in value {
+            item.typeText(String(character)); expected.append(character)
+            let ready = NSPredicate(format: "value == %@", expected)
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: ready, object: item)], timeout: 5), .completed,
+                           "Native input lost characters: \(id)", file: file, line: line)
+        }
         XCTAssertEqual(item.value as? String, value, file: file, line: line)
     }
     private func capture(_ name: String) {
@@ -57,11 +79,9 @@ final class CUKISmokeTests: XCTestCase {
         tap("nav-progress"); _ = node("SC-57"); capture("05-progress")
         tap("nav-home"); _ = node("Abrir diario de nutrición")
         tap("home-register"); tap("Buscar alimento")
-        let search = app.textFields.matching(identifier: "Alimento o ingrediente").firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 20))
-        search.tap(); search.typeText("Pechuga")
-        let food = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Pechuga")).firstMatch
-        XCTAssertTrue(food.waitForExistence(timeout: 20)); let title = food.label; food.tap()
+        fill("Alimento o ingrediente", "Pechuga")
+        let title = "Pechuga de pollo asada"
+        tap(title)
         tap("food-portion")
         let amount = node("portion-amount")
         XCTAssertEqual(amount.value as? String, "100")
