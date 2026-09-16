@@ -130,7 +130,7 @@ jobs:
           test -d CUKITest.xcworkspace
           # CODE_SIGNING_ALLOWED=NO strips the simulated keychain entitlement.
           # '-' is local ad-hoc signing, not an Apple distribution identity.
-          xcodebuild -workspace CUKITest.xcworkspace -scheme CUKISmoke -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build-for-testing 2>&1 | tee ../../../artifacts/native/ios/build.log
+          xcodebuild -workspace CUKITest.xcworkspace -scheme CUKISmoke -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build ARCHS=arm64 CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build-for-testing 2>&1 | tee ../../../artifacts/native/ios/build.log
       - name: Run native guest navigation and durable food XCTest
         run: |
           set -o pipefail
@@ -139,7 +139,7 @@ jobs:
           xcrun simctl bootstatus "$udid" -b
           xcrun simctl ui "$udid" appearance dark
           cd apps/mobile/ios
-          xcodebuild -workspace CUKITest.xcworkspace -scheme CUKISmoke -configuration Release -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build -resultBundlePath ../../../artifacts/native/ios/NativeSmoke.xcresult CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test-without-building 2>&1 | tee ../../../artifacts/native/ios/test.log
+          xcodebuild -workspace CUKITest.xcworkspace -scheme CUKISmoke -configuration Release -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build -resultBundlePath ../../../artifacts/native/ios/NativeSmoke.xcresult ARCHS=arm64 CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test-without-building 2>&1 | tee ../../../artifacts/native/ios/test.log
       - name: Preserve app, screenshots, simulator and actual test results
         if: always()
         run: |
