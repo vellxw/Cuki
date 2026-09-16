@@ -85,13 +85,15 @@ jobs:
       - run: npm run typecheck
       - run: cd apps/mobile && npx --no-install expo prebuild --platform ios --no-install
       - run: cd apps/mobile/ios && pod install
+      - name: Add screen-asserting XCTest target
+        run: ruby scripts/native/ios/add-ui-tests.rb --visual
       - name: Build explicit visual simulator target, without distribution credentials
         run: |
           mkdir -p artifacts/native/visual-ios
           cd apps/mobile/ios
           test -d CUKIVisual.xcworkspace
           set -o pipefail
-          xcodebuild -workspace CUKIVisual.xcworkspace -scheme CUKIVisual -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build ARCHS=arm64 CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build 2>&1 | tee ../../../artifacts/native/visual-ios/build.log
+          xcodebuild -workspace CUKIVisual.xcworkspace -scheme CUKIVisualCapture -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build ARCHS=arm64 CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build-for-testing 2>&1 | tee ../../../artifacts/native/visual-ios/build.log
       - name: Capture six real native screens, not web reconstructions
         run: python3 scripts/native/ios-visual.py
       - uses: actions/upload-artifact@v4
