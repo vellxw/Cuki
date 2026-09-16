@@ -1,8 +1,10 @@
+import {ActiveWorkout} from './ActiveWorkout';
+export {ActiveWorkout} from './ActiveWorkout';
 import { editorDraftKey } from '../../../../packages/core/navigation';
 import {healthWriter,healthName,healthAccountGuard} from '../native/health';
 import {exportWorkoutToHealth} from '../../../../packages/core/health-client';
 import React, { useState } from 'react';
-import { View } from 'react-native';
+import { View, Pressable, TextInput, StyleSheet, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { useApp, useDraft, useTask } from '../data/AppProvider';
 import { Screen, Txt, Title, Button, IconButton, Field, NumberField, Chips, Segments, Toggle, Row, Message, Empty, Section, Card, Glass, Timer, useClock, useNav, confirm, art, type ScreenProps } from '../ui/components';
@@ -382,156 +384,6 @@ export function ExerciseDetail({
 function SessionAbsent() {
   const nav = useNav();
   return <Empty title="No hay sesión activa" detail="Tus sesiones finalizadas están en el historial." action="Ir a entrenar" onPress={() => nav.tab('train')} />;
-}
-export function ActiveWorkout({
-  params
-}: ScreenProps) {
-  const {
-    state
-  } = useApp();
-  const session = state.sessions.find(s => s.id === params.id) ?? state.sessions.find(s => s.status === 'active' || s.status === 'paused');
-  return <Screen title={session?.name ?? 'Entrenamiento'} subtitle={session ? `Ejercicio ${session.currentExercise + 1} de ${session.exercises.length}` : undefined} tab="train" background testID="SC-47">{params.notificationWarning === '1' && <Message type="warning">El descanso terminó en CUKI, pero el sistema no confirmó cancelar su aviso. Tus series están guardadas.</Message>}{session && ['active', 'paused'].includes(session.status) ? <WorkoutBody key={session.id + ':' + session.currentExercise} session={session} /> : <SessionAbsent />}</Screen>;
-}
-function WorkoutBody({
-  session
-}: {
-  session: WorkoutSession;
-}) {
-  const {
-    state,
-    repo
-  } = useApp();
-  const nav = useNav();
-  const task = useTask();
-  const now = useClock();
-  const current = session.exercises[session.currentExercise];
-  const exercise = state.exercises.find(e => e.id === current?.exerciseId);
-  const set = current?.sets.find(s => !s.completedAt);
-  const previous = state.sessions.filter(s => s.status === 'completed').sort((a, b) => (b.endedAt ?? '').localeCompare(a.endedAt ?? '')).flatMap(s => s.exercises).find(e => e.exerciseId === exercise?.id);
-  const [note, setNote] = useState(session.note);
-  const [notesOpen, setNotesOpen] = useState(false);
-  if (!exercise || !current) return <SessionAbsent />;
-  return <><Title>{exercise.name}</Title><Txt tone="secondary">{exercise.muscle} · {exercise.equipment} · {modeLabel[exercise.loadMode]}</Txt><Txt size={13} tone="secondary">Tiempo activo: {duration(sessionSeconds(session, now))}</Txt>{session.status === 'paused' && <Message>Sesión pausada. Podés reanudarla sin perder datos.</Message>}<View style={layout.between}><Txt>Serie</Txt><Txt>{state.profile.units === 'imperial' ? 'lb' : 'kg'}</Txt><Txt>reps / actividad</Txt></View>{current.sets.map((t, i) => <Row key={t.id} title={`${t.completedAt ? '✓ ' : ''}${i + 1} · ${t.kind === 'warmup' ? 'Calentamiento' : t.kind === 'drop' ? 'Descendente' : t.kind === 'working' ? 'Trabajo' : 'Actividad'}`} subtitle={`${t.load !== null ? fmt(loadToDisplay(t.load, state.profile.units), 1) + ' ' + (state.profile.units === 'imperial' ? 'lb' : 'kg') : modeLabel[t.loadMode]} · ${t.reps ?? (t.seconds ? duration(t.seconds) : t.meters ? fmt(t.meters) + ' m' : '—')}${t.rir === null ? '' : ' · RIR ' + t.rir}`} onPress={() => nav.go('SC-49', {
-      id: session.id,
-      exerciseId: current.id,
-      setId: t.id
-    })} />)}{previous && <Txt size={13} tone="secondary">Anterior comparable: {previous.sets.filter(setValid).map(t => `${fmt(t.load, 1)} kg × ${t.reps ?? '—'}`).join(' · ')}</Txt>}{set ? <CurrentSet key={set.id} session={session} exerciseId={current.id} set={set} /> : <Message type="success">Terminaste las series previstas de este ejercicio.</Message>}<View style={layout.wrap}><Button title="Añadir serie" icon="plus" variant="secondary" onPress={() => task.run(() => repo.dispatch({
-        type: 'set',
-        sessionId: session.id,
-        exerciseId: current.id,
-        set: blankSet(exercise, current.sets.at(-1)?.load ?? null)
-      }))} /><Button title={session.status === 'paused' ? 'Reanudar' : 'Pausar'} icon={session.status === 'paused' ? 'play' : 'pause'} variant="quiet" onPress={() => task.run(() => repo.dispatch({
-        type: session.status === 'paused' ? 'resumeSession' : 'pauseSession',
-        id: session.id
-      }))} /></View><Row title="Cambiar ejercicio" onPress={() => nav.go('SC-50', {
-      id: session.id,
-      exerciseId: current.id
-    })} /><Button title={notesOpen ? 'Cerrar notas' : 'Notas de sesión'} variant="quiet" onPress={() => setNotesOpen(!notesOpen)} />{notesOpen && <><Field label="Nota de sesión" value={note} onChangeText={setNote} multiline /><Button title="Guardar nota" variant="secondary" onPress={() => task.run(() => repo.dispatch({
-        type: 'sessionNote',
-        id: session.id,
-        note
-      }))} /></>}<Section title="Ejercicios de la sesión">{session.exercises.map((e, i) => <Row key={e.id} title={`${i + 1}. ${state.exercises.find(x => x.id === e.exerciseId)?.name ?? 'Ejercicio'}`} subtitle={`${e.sets.filter(t => t.completedAt).length}/${e.sets.length} series${e.superset ? ' · Grupo ' + e.superset : ''}`} onPress={() => task.run(() => repo.dispatch({
-        type: 'sessionIndex',
-        sessionId: session.id,
-        index: i
-      }))} />)}</Section><Button title="Añadir ejercicio" variant="secondary" onPress={() => nav.go('SC-45', {
-      mode: 'session',
-      sessionId: session.id
-    })} /><Button title="Finalizar entrenamiento" onPress={() => nav.go('SC-51', {
-      id: session.id
-    })} /><Message type="error">{task.error}</Message></>;
-}
-function CurrentSet({
-  session,
-  exerciseId,
-  set
-}: {
-  session: WorkoutSession;
-  exerciseId: string;
-  set: SetEntry;
-}) {
-  const {
-    state,
-    repo
-  } = useApp();
-  const nav = useNav();
-  const task = useTask();
-  const d = useDraft('active-set:' + set.id, () => ({
-    version: set.version,
-    baseline: set,
-    load: set.load === null ? '' : String(Number(loadToDisplay(set.load, state.profile.units).toFixed(3))),
-    reps: set.reps === null ? '' : String(set.reps),
-    seconds: set.seconds === null ? '' : String(set.seconds),
-    meters: set.meters === null ? '' : String(set.meters)
-  }));
-  const weightRequired = ['external_total', 'external_per_side', 'assisted'].includes(set.loadMode);
-  return <Glass strong style={{
-    borderRadius: 26,
-    padding: 18,
-    gap: 16
-  }}><Txt weight="600">Serie actual</Txt>{weightRequired && <NumberField label={`Carga ${state.profile.units === 'imperial' ? 'lb' : 'kg'}`} value={d.value.load} onChangeText={load => d.set({
-      load
-    })} />}<NumberField label={set.kind === 'timed' ? 'Duración de la serie, segundos' : set.kind === 'distance' ? 'Distancia de la serie, metros' : 'Repeticiones'} value={set.kind === 'timed' ? d.value.seconds : set.kind === 'distance' ? d.value.meters : d.value.reps} onChangeText={v => d.set(set.kind === 'timed' ? {
-      seconds: v
-    } : set.kind === 'distance' ? {
-      meters: v
-    } : {
-      reps: v
-    })} /><Button title="Completar serie" icon="check" busy={task.busy} disabled={session.status === 'paused'} onPress={() => task.run(async () => {
-      await d.flush();
-      const updated: SetEntry = {
-        ...set,
-        version: d.value.version,
-        load: weightRequired ? loadToKg(numberInput(d.value.load, {
-          min: 0
-        })!, state.profile.units) : set.load,
-        reps: set.kind === 'timed' || set.kind === 'distance' ? null : numberInput(d.value.reps, {
-          min: 1,
-          max: 10000,
-          integer: true
-        }),
-        seconds: set.kind === 'timed' ? numberInput(d.value.seconds, {
-          min: 1,
-          max: 86400
-        }) : set.seconds,
-        meters: set.kind === 'distance' ? numberInput(d.value.meters, {
-          min: .1,
-          max: 1e6
-        }) : set.meters
-      };
-      await repo.dispatch({
-        type: 'set',
-        sessionId: session.id,
-        exerciseId,
-        set: updated,
-        baseSet: d.value.baseline,
-        complete: true
-      });
-      await repo.dispatch({
-        type: 'dropDraft',
-        key: d.key
-      });
-      const current = repo.getSnapshot().sessions.find(s => s.id === session.id)!;
-      const next = nextExerciseIndex(current);
-      if (next !== current.currentExercise) await repo.dispatch({
-        type: 'sessionIndex',
-        sessionId: current.id,
-        index: next
-      });
-      try {
-        const id = repo.getSnapshot().profile.reminders ? await scheduleRest(current.restDeadline ?? Date.now(), current.restNotificationId) : null;
-        await repo.dispatch({
-          type: 'notification',
-          sessionId: current.id,
-          notificationId: id
-        });
-      } catch {/* El fallo de notificación no revierte una serie confirmada. */}
-      nav.go('SC-48', {
-        id: session.id,
-        lastExerciseId: exerciseId,
-        lastSetId: set.id
-      });
-    })} />{task.error&&set.version!==d.value.version&&<Button title="Descartar borrador y recargar serie actual" variant="quiet" onPress={()=>{d.set({version:set.version,baseline:set,load:set.load==null?'':String(Number(loadToDisplay(set.load,state.profile.units).toFixed(3))),reps:set.reps==null?'':String(set.reps),seconds:set.seconds==null?'':String(set.seconds),meters:set.meters==null?'':String(set.meters)});}}/>}<Message type="error">{task.error ?? d.error}</Message></Glass>;
 }
 export function Rest({
   params
