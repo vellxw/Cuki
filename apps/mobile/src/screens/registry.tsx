@@ -1,3 +1,4 @@
+import {dockSectionForScreen} from '../../../../packages/core/navigation';
 import React from 'react';
 import { View } from 'react-native';
 import { onboardingScreens } from './Onboarding';
@@ -30,4 +31,8 @@ const mainTabs: Record<string, TabName> = {
   'SC-42': 'train',
   'SC-57': 'progress'
 };
-export function ScreenRouter({screen,params={}}:{screen:string;params?:ScreenProps['params']}) {const Component=screens[screen];return Component?<Component params={params}/>:<Screen title="Pantalla no disponible"><Empty title="No encontramos ese destino" detail="Volvé a la navegación principal sin perder tus registros."/></Screen>}
+export function ScreenRouter({screen,params={}}:{screen:string;params?:ScreenProps['params']}) {
+ const nav=useNav(),Component=screens[screen],section=dockSectionForScreen(screen);
+ if(!Component)return <Screen title="Pantalla no disponible"><Empty title="No encontramos ese destino" detail="Volvé a la navegación principal sin perder tus registros."/></Screen>;
+ return <View style={{flex:1}}><Component params={params}/>{section&&<Dock active={section} onSelect={tab=>nav.finish(({home:'SC-07',recipes:'SC-23',train:'SC-42',progress:'SC-57'} as const)[tab])}/>}</View>;
+}

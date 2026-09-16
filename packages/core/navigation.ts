@@ -47,3 +47,12 @@ export function originHref(path: string, params: RouteParameters): string {
     .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join('&');
   return safeReturnHref(path + (query ? '?' + query : '')) ?? tabPaths.home;
 }
+
+/** These detail routes retain the product navigation shown in the approved references.
+ * Full-screen capture, onboarding, editors and harvest celebration deliberately do not. */
+export function dockSectionForScreen(screen:string):'home'|'recipes'|'register'|'train'|'progress'|null {
+ const sections:Record<string,'recipes'|'register'|'train'|'progress'>={
+  'SC-20':'register','SC-26':'recipes','SC-47':'train','SC-48':'train',
+  'SC-79':'progress','SC-81':'progress','SC-83':'progress','SC-86':'progress',
+ };return sections[screen]??null;
+}

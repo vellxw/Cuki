@@ -5,7 +5,7 @@ import {SyncCoordinator} from '../../../../packages/core/sync-coordinator';
 import {PersistentDraft} from '../../../../packages/core/draft';
 configureUUID(()=>Crypto.randomUUID());
 const queryClient=new QueryClient({defaultOptions:{queries:{retry:1,staleTime:30000},mutations:{retry:false}}});
-export interface ContextValue {state:AppState;repo:ClientRepo;api:ApiClient;cloud:CloudService;sync:SyncService;syncCoordinator?:SyncCoordinator;identity:auth.Identity|null;requestKey:(scope:string,body:unknown)=>Promise<string>;reloadIdentity:(mergeGuest?:boolean)=>Promise<void>;signOut:()=>Promise<void>}
+export interface ContextValue {clockOverride?:number;state:AppState;repo:ClientRepo;api:ApiClient;cloud:CloudService;sync:SyncService;syncCoordinator?:SyncCoordinator;identity:auth.Identity|null;requestKey:(scope:string,body:unknown)=>Promise<string>;reloadIdentity:(mergeGuest?:boolean)=>Promise<void>;signOut:()=>Promise<void>}
 export const AppContext=createContext<ContextValue|null>(null);
 const Context=AppContext;
 export function useApp(){const c=useContext(Context);if(!c)throw new Error('CUKI data provider not ready');return c}
