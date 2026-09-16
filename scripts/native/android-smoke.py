@@ -136,94 +136,100 @@ def tap_scrolled(identifier):
     tap(identifier)
 
 
-report = {'package': PACKAGE, 'sourceCommit': os.environ.get('CUKI_BINARY_SOURCE_SHA') or os.environ.get('GITHUB_SHA'),
-          'harnessCommit': os.environ.get('GITHUB_SHA'), 'checks': [],
-          'startedAt': time.time(), 'infrastructureEvents': infra_events, 'scope': 'native guest navigation, food persistence and superset workout recovery; not visual-fidelity or provider approval'}
-try:
-    apk = pathlib.Path('apps/mobile/android/app/build/outputs/apk/release/app-release.apk')
-    if not apk.is_file():
-        raise FileNotFoundError(apk)
-    report['apkSha256'] = hashlib.sha256(apk.read_bytes()).hexdigest()
-    report['device'] = adb('shell', 'getprop', 'ro.product.model').strip()
-    report['androidVersion'] = adb('shell', 'getprop', 'ro.build.version.release').strip()
-    adb('install', '-r', str(apk))
-    assert PACKAGE in adb('shell', 'pm', 'list', 'packages', PACKAGE)
-    adb('shell', 'pm', 'clear', PACKAGE)
-    adb('logcat', '-c')
-    launch()
-    scroll_to('welcome-explore'); tap('welcome-explore')
-    wait_node('SC-07'); wait_node('Nutrición de hoy'); capture('01-home-empty')
-    report['checks'].append('welcome-to-home-content')
-    tap('nav-recipes'); wait_node('SC-23'); wait_node('Buscar recetas e ingredientes'); capture('02-recipes')
-    tap('nav-register'); wait_node('SC-09'); wait_node('Buscar alimento'); capture('03-register')
-    tap('Cerrar'); wait_node('SC-23'); wait_node('Buscar recetas e ingredientes')
-    report['checks'].append('contextual-register-returns-to-recipes-content')
-    tap('nav-train'); wait_node('SC-42'); capture('04-training')
-    tap('nav-progress'); wait_node('SC-57'); capture('05-progress')
-    report['checks'].append('four-distinct-destination-screen-roots')
-    tap('nav-home'); wait_node('SC-07'); tap('home-register'); wait_node('SC-09')
-    tap('Buscar alimento'); wait_node('SC-10')
-    fill('Alimento o ingrediente', 'Pechuga')
-    # Select the result directly, as a person does. An unconditional Back pops the
-    # screen when a hardware keyboard means no software IME was opened.
-    wait_node('Pechuga de pollo asada', predicate=lambda n: n.get('clickable') == 'true')
-    capture('05b-food-search')
-    name = 'Pechuga de pollo asada'
-    # Multiple cooking methods are distinct valid foods. Select the exact reviewed
-    # source instead of asserting that a broad search returns only one candidate.
-    wait_node(name, predicate=lambda n: n.get('clickable') == 'true')
-    tap(name); wait_node('SC-11'); scroll_to('food-portion'); tap('food-portion')
-    wait_node('SC-12'); assert wait_node('portion-amount').get('text') == '100'
-    scroll_to('portion-save'); tap('portion-save'); wait_node('SC-07')
-    tap('Abrir diario de nutrición'); wait_node('SC-08'); scroll_to(name); capture('06-food-saved')
-    report['checks'].append('food-source-to-100g-durable-diary')
-    # Metro is not started by this workflow. Disable connectivity and kill the process.
-    adb('shell', 'svc', 'wifi', 'disable'); adb('shell', 'svc', 'data', 'disable')
-    adb('shell', 'am', 'force-stop', PACKAGE); launch()
-    wait_node('SC-07'); tap('Abrir diario de nutrición'); wait_node('SC-08'); scroll_to(name)
-    capture('07-diary-after-offline-process-restart')
-    report['checks'].append('saved-food-survives-process-restart-without-network-or-metro')
-    # Create a real two-exercise superset through the UI. No database seed or API
-    # test endpoint injects a workout into the native application.
-    tap('Volver'); wait_node('SC-07'); tap('nav-train'); wait_node('SC-42')
-    tap_scrolled('Crear rutina'); wait_node('SC-44')
-    fill('Nombre del plan', 'Rutina QA nativa')
-    tap_scrolled('Añadir ejercicio al día'); wait_node('SC-45')
-    fill('Buscar ejercicio o equipo', 'Press inclinado'); tap('Press inclinado'); wait_node('SC-44')
-    fill('Series, ejercicio 1', '1')
-    fill('Grupo de superserie o circuito, ejercicio 1', 'A')
-    tap_scrolled('Añadir ejercicio al día'); wait_node('SC-45')
-    fill('Buscar ejercicio o equipo', 'Remo sentado'); tap('Remo sentado'); wait_node('SC-44')
-    fill('Series, ejercicio 2', '1')
-    fill('Grupo de superserie o circuito, ejercicio 2', 'A')
-    tap_scrolled('Guardar plan'); wait_node('SC-42'); tap_scrolled('Iniciar Día A'); wait_node('SC-47')
-    wait_node('Press inclinado'); fill('Carga kg', '20'); fill('Repeticiones', '8')
-    tap_scrolled('Completar serie'); wait_node('SC-48'); capture('08-rest-after-first-superset-set')
-    report['checks'].append('create-plan-with-two-exercise-superset-and-complete-first-set')
-    adb('shell', 'am', 'force-stop', PACKAGE); launch(); wait_node('SC-07')
-    tap('nav-train'); wait_node('SC-42'); tap_scrolled('Reanudar sesión'); wait_node('SC-48')
-    tap_scrolled('Continuar entrenamiento'); wait_node('SC-47'); wait_node('Remo sentado')
-    fill('Carga kg', '25'); fill('Repeticiones', '8')
-    tap_scrolled('Completar serie'); wait_node('SC-48'); tap_scrolled('Finalizar sesión'); wait_node('SC-51')
-    fill('Cómo fue la sesión, opcional', 'Persistencia QA sin red')
-    tap_scrolled('Guardar y finalizar sesión'); wait_node('SC-52')
-    wait_node('2 series de trabajo / actividades válidas')
-    wait_node('Persistencia QA sin red'); capture('09-durable-workout-summary')
-    report['checks'].append('superset-rest-survives-offline-process-death-and-completes-two-real-sets')
-    report['passed'] = True
-except Exception as error:
-    report['passed'] = False; report['error'] = str(error)
+def run_guest_suite():
+    report = {'package': PACKAGE, 'sourceCommit': os.environ.get('CUKI_BINARY_SOURCE_SHA') or os.environ.get('GITHUB_SHA'),
+              'harnessCommit': os.environ.get('GITHUB_SHA'), 'checks': [],
+              'startedAt': time.time(), 'infrastructureEvents': infra_events, 'scope': 'native guest navigation, food persistence and superset workout recovery; not visual-fidelity or provider approval'}
     try:
-        capture('failure')
-    except Exception:
-        pass
-finally:
-    report['finishedAt'] = time.time()
-    try:
-        (OUTPUT / 'logcat.txt').write_text(adb('logcat', '-d', '-v', 'brief'))
-        (OUTPUT / 'gfxinfo.txt').write_text(adb('shell', 'dumpsys', 'gfxinfo', PACKAGE))
-    except Exception:
-        pass
-    (OUTPUT / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
-if not report['passed']:
-    raise SystemExit(1)
+        apk = pathlib.Path('apps/mobile/android/app/build/outputs/apk/release/app-release.apk')
+        if not apk.is_file():
+            raise FileNotFoundError(apk)
+        report['apkSha256'] = hashlib.sha256(apk.read_bytes()).hexdigest()
+        report['device'] = adb('shell', 'getprop', 'ro.product.model').strip()
+        report['androidVersion'] = adb('shell', 'getprop', 'ro.build.version.release').strip()
+        adb('install', '-r', str(apk))
+        assert PACKAGE in adb('shell', 'pm', 'list', 'packages', PACKAGE)
+        adb('shell', 'pm', 'clear', PACKAGE)
+        adb('logcat', '-c')
+        launch()
+        scroll_to('welcome-explore'); tap('welcome-explore')
+        wait_node('SC-07'); wait_node('Nutrición de hoy'); capture('01-home-empty')
+        report['checks'].append('welcome-to-home-content')
+        tap('nav-recipes'); wait_node('SC-23'); wait_node('Buscar recetas e ingredientes'); capture('02-recipes')
+        tap('nav-register'); wait_node('SC-09'); wait_node('Buscar alimento'); capture('03-register')
+        tap('Cerrar'); wait_node('SC-23'); wait_node('Buscar recetas e ingredientes')
+        report['checks'].append('contextual-register-returns-to-recipes-content')
+        tap('nav-train'); wait_node('SC-42'); capture('04-training')
+        tap('nav-progress'); wait_node('SC-57'); capture('05-progress')
+        report['checks'].append('four-distinct-destination-screen-roots')
+        tap('nav-home'); wait_node('SC-07'); tap('home-register'); wait_node('SC-09')
+        tap('Buscar alimento'); wait_node('SC-10')
+        fill('Alimento o ingrediente', 'Pechuga')
+        # Select the result directly, as a person does. An unconditional Back pops the
+        # screen when a hardware keyboard means no software IME was opened.
+        wait_node('Pechuga de pollo asada', predicate=lambda n: n.get('clickable') == 'true')
+        capture('05b-food-search')
+        name = 'Pechuga de pollo asada'
+        # Multiple cooking methods are distinct valid foods. Select the exact reviewed
+        # source instead of asserting that a broad search returns only one candidate.
+        wait_node(name, predicate=lambda n: n.get('clickable') == 'true')
+        tap(name); wait_node('SC-11'); scroll_to('food-portion'); tap('food-portion')
+        wait_node('SC-12'); assert wait_node('portion-amount').get('text') == '100'
+        scroll_to('portion-save'); tap('portion-save'); wait_node('SC-07')
+        tap('Abrir diario de nutrición'); wait_node('SC-08'); scroll_to(name); capture('06-food-saved')
+        report['checks'].append('food-source-to-100g-durable-diary')
+        # Metro is not started by this workflow. Disable connectivity and kill the process.
+        adb('shell', 'svc', 'wifi', 'disable'); adb('shell', 'svc', 'data', 'disable')
+        adb('shell', 'am', 'force-stop', PACKAGE); launch()
+        wait_node('SC-07'); tap('Abrir diario de nutrición'); wait_node('SC-08'); scroll_to(name)
+        capture('07-diary-after-offline-process-restart')
+        report['checks'].append('saved-food-survives-process-restart-without-network-or-metro')
+        # Create a real two-exercise superset through the UI. No database seed or API
+        # test endpoint injects a workout into the native application.
+        tap('Volver'); wait_node('SC-07'); tap('nav-train'); wait_node('SC-42')
+        tap_scrolled('Crear rutina'); wait_node('SC-44')
+        fill('Nombre del plan', 'Rutina QA nativa')
+        tap_scrolled('Añadir ejercicio al día'); wait_node('SC-45')
+        fill('Buscar ejercicio o equipo', 'Press inclinado'); tap('Press inclinado'); wait_node('SC-44')
+        fill('Series, ejercicio 1', '1')
+        fill('Grupo de superserie o circuito, ejercicio 1', 'A')
+        tap_scrolled('Añadir ejercicio al día'); wait_node('SC-45')
+        fill('Buscar ejercicio o equipo', 'Remo sentado'); tap('Remo sentado'); wait_node('SC-44')
+        fill('Series, ejercicio 2', '1')
+        fill('Grupo de superserie o circuito, ejercicio 2', 'A')
+        tap_scrolled('Guardar plan'); wait_node('SC-42'); tap_scrolled('Iniciar Día A'); wait_node('SC-47')
+        wait_node('Press inclinado'); fill('Carga kg', '20'); fill('Repeticiones', '8')
+        tap_scrolled('Completar serie'); wait_node('SC-48'); capture('08-rest-after-first-superset-set')
+        report['checks'].append('create-plan-with-two-exercise-superset-and-complete-first-set')
+        adb('shell', 'am', 'force-stop', PACKAGE); launch(); wait_node('SC-07')
+        tap('nav-train'); wait_node('SC-42'); tap_scrolled('Reanudar sesión'); wait_node('SC-48')
+        tap_scrolled('Continuar entrenamiento'); wait_node('SC-47'); wait_node('Remo sentado')
+        fill('Carga kg', '25'); fill('Repeticiones', '8')
+        tap_scrolled('Completar serie'); wait_node('SC-48'); tap_scrolled('Finalizar sesión'); wait_node('SC-51')
+        fill('Cómo fue la sesión, opcional', 'Persistencia QA sin red')
+        tap_scrolled('Guardar y finalizar sesión'); wait_node('SC-52')
+        wait_node('2 series de trabajo / actividades válidas')
+        wait_node('Persistencia QA sin red'); capture('09-durable-workout-summary')
+        report['checks'].append('superset-rest-survives-offline-process-death-and-completes-two-real-sets')
+        report['passed'] = True
+    except Exception as error:
+        report['passed'] = False; report['error'] = str(error)
+        try:
+            capture('failure')
+        except Exception:
+            pass
+    finally:
+        report['finishedAt'] = time.time()
+        try:
+            (OUTPUT / 'logcat.txt').write_text(adb('logcat', '-d', '-v', 'brief'))
+            (OUTPUT / 'gfxinfo.txt').write_text(adb('shell', 'dumpsys', 'gfxinfo', PACKAGE))
+        except Exception:
+            pass
+        (OUTPUT / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
+    if not report['passed']:
+        raise AssertionError(report.get('error', 'Native guest suite failed'))
+    return report
+
+
+if __name__ == '__main__':
+    run_guest_suite()
