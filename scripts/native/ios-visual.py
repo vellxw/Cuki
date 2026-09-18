@@ -34,18 +34,9 @@ def verify_capture(summary, attachments, out=OUT):
 def main():
     result = OUT / 'VisualCapture.xcresult'
     try:
-        devices = json.loads(run('xcrun', 'simctl', 'list', 'devices', 'available', '-j'))
-        phones = [d for group in devices['devices'].values() for d in group
-                  if d.get('isAvailable') and 'iPhone' in d['name']]
-        # Prefer the same 390x844 logical size as the Android visual contract.
-        device = next((d for d in phones if d['name'] == 'iPhone 13'), phones[0])
+        from ios_simulator import prepare
+        device = prepare(OUT)
         udid = device['udid']; report['device'] = device
-        if device['state'] != 'Booted':
-            run('xcrun', 'simctl', 'boot', udid)
-        run('xcrun', 'simctl', 'bootstatus', udid, '-b', timeout=300)
-        run('xcrun', 'simctl', 'ui', udid, 'appearance', 'dark')
-        run('xcrun', 'simctl', 'status_bar', udid, 'override', '--time', '9:41',
-            '--batteryState', 'charged', '--batteryLevel', '100')
         args = ['xcodebuild', '-workspace', 'CUKIVisual.xcworkspace', '-scheme', 'CUKIVisualCapture',
                 '-configuration', 'Release', '-destination', f'platform=iOS Simulator,id={udid}',
                 '-derivedDataPath', 'build', '-resultBundlePath', str(result),

@@ -65,3 +65,43 @@ test('logical training root uses the existing tabs so the dock is not lost after
  expect(router.dismissTo).toHaveBeenCalledWith({pathname:'/(tabs)/train',params:{planId:'plan-a'}});
  expect(router.replace).not.toHaveBeenCalled();expect(router.push).not.toHaveBeenCalled();
 });
+
+// Material tests exercise selection/fallback and semantics, not pixel fidelity.
+test('native liquid glass is selected only when both APIs are available',()=>{
+ const rn=require('react-native'),glass=require('expo-glass-effect');
+ const old=rn.Platform.OS;rn.Platform.OS='ios';
+ const a=jest.spyOn(glass,'isLiquidGlassAvailable').mockReturnValue(true);
+ const b=jest.spyOn(glass,'isGlassEffectAPIAvailable').mockReturnValue(true);
+ try {
+  const Glass=require('../../apps/mobile/src/ui/components').Glass;
+  render(<Glass strong><Txt>Contenido real</Txt></Glass>);
+  expect(screen.getByTestId('material-native-glass').props.glassEffectStyle).toBe('clear');
+  expect(screen.getByText('Contenido real')).toBeTruthy();
+  expect(screen.queryByTestId('material-blurred-glass')).toBeNull();
+ }finally{a.mockRestore();b.mockRestore();rn.Platform.OS=old;}
+});
+test('reduced transparency uses a stable opaque material rather than hiding content',()=>{
+ mockState.profile.reduceTransparency=true;
+ const Glass=require('../../apps/mobile/src/ui/components').Glass;
+ render(<Glass strong><Txt>Contenido accesible</Txt></Glass>);
+ expect(screen.getByTestId('material-opaque')).toBeTruthy();
+ expect(screen.queryByTestId('material-native-glass')).toBeNull();
+ expect(screen.queryByTestId('material-blurred-glass')).toBeNull();
+ expect(screen.getByText('Contenido accesible')).toBeTruthy();
+});
+test('the nutrition SVG supplies an explicit viewBox independent of the device scale',()=>{
+ const Svg=require('react-native-svg').default;
+ render(<Ring value={1620} goal={2000} size={148}/>);
+ expect(screen.UNSAFE_getByType(Svg).props.viewBox).toBe('0 0 148 148');
+ expect(screen.getByText('1.620')).toBeTruthy();
+});
+test('the moving dock lens never becomes an additional hit target or tab',()=>{
+ mockState.profile.reduceMotion=true;
+ render(<Dock active="recipes"/>);
+ fireEvent(screen.getByTestId('dock-material-track'),'layout',{nativeEvent:{layout:{width:366,height:78,x:0,y:0}}});
+ const lens=screen.getByTestId('dock-active-lens',{includeHiddenElements:true});
+ expect(lens.props.pointerEvents).toBe('none');
+ expect(require('react-native').StyleSheet.flatten(lens.props.style).width).toBeCloseTo(71.2);
+ expect(screen.getAllByRole('tab')).toHaveLength(4);
+ expect(screen.getAllByRole('button',{name:'Registrar'})).toHaveLength(1);
+});
