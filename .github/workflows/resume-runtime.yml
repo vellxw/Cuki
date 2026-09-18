@@ -1,0 +1,111 @@
+name: CUKI unchanged APK runtime check
+on:
+  push:
+    branches: [implementation/cuki-verified]
+    paths: [.github/workflows/resume-runtime.yml, ci/resume-runtime.json]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: cuki-unchanged-apk-runtime
+  cancel-in-progress: false
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      CUKI_BINARY_SOURCE_SHA: 7b3f9972d578ce89cf729930858c20eba21cb2d4
+      CUKI_EMULATOR_GPU: swiftshader-no-vulkan
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: cuki-android-binary-7b3f9972d578ce89cf729930858c20eba21cb2d4
+          run-id: 35152098719
+          github-token: ${{ github.token }}
+          path: /tmp/cuki-prior-binary
+      - name: Require the exact previously compiled app, no rebuilt or modified binary
+        run: |
+          mkdir -p apps/mobile/android/app/build/outputs/apk/release artifacts/native/runtime-diagnostic
+          source=/tmp/cuki-prior-binary/apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          echo "fd81b32720c68ecd43beb100dfc045fcd69d6f72da0dcdf98421827300352a56  $source" | sha256sum -c -
+          cp "$source" apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          git rev-parse HEAD > artifacts/native/runtime-diagnostic/HARNESS_COMMIT.txt
+          printf '%s\n' "$CUKI_BINARY_SOURCE_SHA" > artifacts/native/runtime-diagnostic/BINARY_COMMIT.txt
+          printf '%s\n' 'Same APK and API 36; explicit SwiftShader/GLES instead of the automatic software/Vulkan backend. This diagnostic is not proof of root cause.' > artifacts/native/runtime-diagnostic/SCOPE.txt
+      - name: Configure the ordinary hardware accelerated CI emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          python3 -m venv /tmp/cuki-native-driver
+          /tmp/cuki-native-driver/bin/python -m pip install uiautomator2==3.7.0
+          echo /tmp/cuki-native-driver/bin >> "$GITHUB_PATH"
+      - uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 15
+        with:
+          api-level: 36
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 3072
+          heap-size: 512
+          emulator-options: -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -noaudio -no-boot-anim
+          disable-animations: false
+          script: timeout --signal=TERM --kill-after=15s 600s python3 scripts/native/android-smoke.py
+      - name: Preserve infrastructure independently from app test results
+        if: always()
+        run: |
+          mkdir -p artifacts/native/runtime-diagnostic
+          "$ANDROID_HOME/emulator/emulator" -version > artifacts/native/runtime-diagnostic/emulator-version.txt 2>&1 || true
+          free -m > artifacts/native/runtime-diagnostic/host-memory.txt
+          timeout 8s adb devices -l > artifacts/native/runtime-diagnostic/adb-devices.txt 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cuki-unchanged-apk-runtime-${{ github.sha }}
+          path: |
+            artifacts/native/android
+            artifacts/native/runtime-diagnostic
+          if-no-files-found: error
+          retention-days: 30
+  dependency-delta:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Export only the exact lockfile package delta for local offline verification
+        run: |
+          mkdir -p artifacts/dependency-delta
+          python3 - <<'PY'
+          import pathlib,json,hashlib,tarfile
+          root=pathlib.Path.cwd()
+          paths=['node_modules/react','node_modules/@emnapi/runtime','node_modules/@jest/reporters/node_modules/brace-expansion','node_modules/ajv/node_modules/fast-uri','node_modules/brace-expansion','node_modules/browserslist','node_modules/electron-to-chromium','node_modules/fast-uri','node_modules/jest-config/node_modules/brace-expansion','node_modules/jest-runtime/node_modules/brace-expansion','node_modules/test-exclude/node_modules/brace-expansion']
+          lock=json.loads((root/'package-lock.json').read_text())['packages']; result={}
+          archive=root/'artifacts/dependency-delta/packages.tgz'
+          with tarfile.open(archive,'w:gz') as tar:
+              for rel in paths:
+                  p=root/rel
+                  if not p.exists():
+                      result[rel]={'present':False,'optional':lock.get(rel,{}).get('optional',False)};continue
+                  version=json.loads((p/'package.json').read_text())['version']
+                  assert version==lock[rel]['version'],rel
+                  result[rel]={'present':True,'version':version}
+                  tar.add(p,arcname=rel)
+          (archive.parent/'manifest.json').write_text(json.dumps({'packages':result,'lockfileSha256':hashlib.sha256((root/'package-lock.json').read_bytes()).hexdigest(),'archiveSha256':hashlib.sha256(archive.read_bytes()).hexdigest()},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-exact-dependency-delta-${{ github.sha }}
+          path: artifacts/dependency-delta
+          retention-days: 14
+          if-no-files-found: error
