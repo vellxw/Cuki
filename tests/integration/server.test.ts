@@ -38,14 +38,14 @@ test('local authentication verifies email, rotates refresh tokens and refuses re
 test('new plants freeze their renderer and full procedural descriptor at enrollment',async()=>{
  const a=await user();const g=await garden.enroll(db,a,'UTC','garden-policy-2.0.0',uid(),clock);
  const row=(await db.query('SELECT plant_descriptor FROM challenges WHERE id=$1',[g.id])).rows[0];
- assert.equal(row.plant_descriptor.rendererVersion,'1.1.0');
+ assert.equal(row.plant_descriptor.rendererVersion,'1.2.0');
  assert.equal(row.plant_descriptor.seed,g.plant.seed);
  assert.ok(row.plant_descriptor.leaves.length>0);
  const before=stableJSON(row.plant_descriptor);
  await migrate(db);await garden.getGarden(db,a,clock);
  const again=(await db.query('SELECT plant_descriptor FROM challenges WHERE id=$1',[g.id])).rows[0];
  assert.equal(stableJSON(again.plant_descriptor),before);
- assert.equal((await garden.getGarden(db,a,clock))!.plant.rendererVersion,'1.1.0');
+ assert.equal((await garden.getGarden(db,a,clock))!.plant.rendererVersion,'1.2.0');
 });
 test('a migrated legacy cycle retains renderer 1.0 rather than silently changing its plant',async()=>{
  const a=await user();const g=await garden.enroll(db,a,'UTC','garden-policy-2.0.0',uid(),clock);

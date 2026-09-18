@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {CURRENT_RENDERER,leafRaster} from '../../packages/garden-engine/leaf-raster';
 const digest=(a:Uint8Array)=>createHash('sha256').update(a).digest('hex');
 test('leaf material is deterministic, seed-specific and separately versioned from geometry',()=>{
- assert.equal(CURRENT_RENDERER,'1.1.0');
+ assert.equal(CURRENT_RENDERER,'1.2.0');
  const a=leafRaster(1852006),b=leafRaster(1852006),c=leafRaster(1852007);
  assert.equal(a.byteLength,128*256*4);assert.deepEqual(a,b);assert.notEqual(digest(a),digest(c));
  for(let i=3;i<a.length;i+=4)assert.equal(a[i],255);

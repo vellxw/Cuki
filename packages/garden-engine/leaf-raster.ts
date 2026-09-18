@@ -1,6 +1,6 @@
 /** Versioned, deterministic botanical albedo. It is a leaf texture, not a plant image. */
-export const CURRENT_RENDERER = '1.1.0' as const;
-export type PlantRendererVersion = '1.0.0' | typeof CURRENT_RENDERER;
+export const CURRENT_RENDERER = '1.2.0' as const;
+export type PlantRendererVersion = '1.0.0' | '1.1.0' | typeof CURRENT_RENDERER;
 export function leafRaster(seed:number,width=128,height=256,version:PlantRendererVersion=CURRENT_RENDERER) {
   if(!Number.isInteger(seed)||seed<0||seed>0xffffffff||!Number.isInteger(width)||!Number.isInteger(height)||width<2||height<2||width>1024||height>1024)throw new Error('Invalid procedural texture arguments');
   const data=new Uint8Array(width*height*4),phase=(seed%4093)/4093*Math.PI*2;
@@ -12,7 +12,7 @@ export function leafRaster(seed:number,width=128,height=256,version:PlantRendere
       const mottled=Math.sin(u*38+seed%37)*Math.sin(v*55+Math.sin(u*23))*Math.sin((u+v)*31);
       const n=center<.012||rib<.055?1:mottled>.15&&center<.4?.64:.17;
       data[i]=28+120*n;data[i+1]=55+104*n;data[i+2]=13+47*n;
-    } else {
+    } else if(version==='1.1.0') {
       // Continuous lateral venation and broad, soft variegation rather than noisy
       // thresholded yellow speckles. The same seed keeps the same leaf pattern.
       const signed=(u-.5)*2,edge=Math.abs(signed);
@@ -25,6 +25,16 @@ export function leafRaster(seed:number,width=128,height=256,version:PlantRendere
       data[i]=20+lamina*20+pale*96;
       data[i+1]=48+lamina*44+pale*93;
       data[i+2]=18+lamina*10+pale*43;
+    }
+    if(version==='1.2.0'){
+      const s=(u-.5)*2,e=Math.abs(s),mid=Math.exp(-Math.pow(s/.017,2));
+      const vein=Math.exp(-Math.pow(Math.sin(v*Math.PI*11-e*3),2)/.005)*(1-e*.65);
+      const streak=Math.exp(-Math.pow((e-(.23+.10*Math.sin(v*9+phase)))/.12,2));
+      const pale=.72*streak+.13*vein+.14*mid;
+      const tone=Math.sin(v*5+s*2+phase)*.035;
+      data[i]=40+tone*25+pale*112;
+      data[i+1]=79+tone*38+pale*99;
+      data[i+2]=29+tone*14+pale*56;
     }
     data[i+3]=255;
   }

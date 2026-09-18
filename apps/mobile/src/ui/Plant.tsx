@@ -1,3 +1,4 @@
+import {BotanicalObject} from './plant/BotanicalObject';
 import {useApp} from '../data/AppProvider';
 import {CURRENT_RENDERER,leafRaster,type PlantRendererVersion} from '../../../../packages/garden-engine/leaf-raster';
 import React,{Suspense,useCallback,useEffect,useMemo,useRef,useState} from 'react';import {AppState,Platform,Text,View} from 'react-native';import {Canvas,useFrame} from '@react-three/fiber/native';import * as THREE from 'three';import Svg,{Defs,LinearGradient as SVGGradient,Stop,Path,Ellipse,G} from 'react-native-svg';import {useFocusEffect} from 'expo-router';import {generatePlant,leafGrowth,type LeafDescriptor,type PlantDescriptor} from '../../../../packages/garden-engine';import {useTheme} from './theme';
@@ -38,8 +39,8 @@ export function Plant({seed,weeks,height=300}:{seed:number;weeks:number;height?:
  const {state}=useApp();
  const persisted=(state.garden?.plant.seed===seed?state.garden.plant:state.plants.find(p=>p.seed===seed));
  const version=persisted?.rendererVersion??CURRENT_RENDERER;
- const rendererVersion:PlantRendererVersion=version==='1.0.0'?'1.0.0':CURRENT_RENDERER;
- const supported=version==='1.0.0'||version===CURRENT_RENDERER;
+ const rendererVersion:PlantRendererVersion=version==='1.0.0'||version==='1.1.0'?version:CURRENT_RENDERER;
+ const supported=version==='1.0.0'||version==='1.1.0'||version===CURRENT_RENDERER;
  const [focused,setFocused]=useState(true);
  const [foreground,setForeground]=useState(AppState.currentState===null||AppState.currentState==='active');
  useFocusEffect(useCallback(()=>{setFocused(true);return()=>setFocused(false)},[]));
@@ -48,13 +49,15 @@ export function Plant({seed,weeks,height=300}:{seed:number;weeks:number;height?:
  const alternative=<PlantLite seed={seed} weeks={week} height={height-18}/>;
  return <View style={{height,width:'100%'}} accessibilityLabel={`Planta procedural, ${week} semanas acreditadas`} accessible>
   {!supported?<View><PlantLite seed={seed} weeks={week} height={height-24}/><Text style={{color:'#B8C2BE',fontSize:11}}>Vista simplificada; versión de render no disponible.</Text></View>:<PlantSurface key={String(seed)+rendererVersion} active={active} fallback={alternative}>{onFirstDraw=><Suspense fallback={null}>
-   <Canvas style={{width:'100%',height:'100%'}} frameloop={!active?'never':reduceMotion?'demand':'always'}
+   <Canvas style={{width:'100%',height:'100%'}} frameloop={!active?'never':rendererVersion==='1.2.0'||reduceMotion?'demand':'always'}
     camera={{position:[0,.55,3.45],fov:36,near:.1,far:30}}
     onCreated={({gl,camera})=>{gl.setClearColor(0x000000,0);camera.lookAt(0,.45,0)}}>
+    {rendererVersion==='1.2.0'?<BotanicalObject descriptor={descriptor} week={week} animated={active&&!reduceMotion} onFirstDraw={onFirstDraw}/>:<>
     <ambientLight intensity={rendererVersion==='1.0.0'?1.2:.8}/>
     <directionalLight position={[2,4,3]} intensity={rendererVersion==='1.0.0'?3.2:2.6} color="#FFF0D5"/>
     <directionalLight position={[-3,1,2]} intensity={rendererVersion==='1.0.0'?1.1:.7} color="#B4D7CE"/>
     <Object3D rendererVersion={rendererVersion} descriptor={descriptor} week={week} animated={active&&!reduceMotion} onFirstDraw={onFirstDraw}/>
+    </>}
    </Canvas>
   </Suspense>}</PlantSurface>}
  </View>;
