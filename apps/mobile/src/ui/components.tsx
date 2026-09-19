@@ -108,7 +108,7 @@ export function Screen({title,subtitle,children,back=true,dock=true,tab,backgrou
     <BlurTargetView ref={backgroundRef} pointerEvents="none" style={[StyleSheet.absoluteFill,{backgroundColor:c.background}]}>
      {background&&<><Image source={art.clean} contentFit="cover" style={StyleSheet.absoluteFill} accessible={false}/><LinearGradient colors={dark?['rgba(5,10,8,.64)','rgba(4,10,7,.24)','rgba(4,10,7,.85)']:['rgba(248,247,241,.90)','rgba(248,247,241,.94)']} style={StyleSheet.absoluteFill}/></>}
     </BlurTargetView>
-    <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}>
+    <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':'height'}>
      <ScrollView testID="screen-scroll" style={{flex:1}} contentInsetAdjustmentBehavior="never" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={[{paddingTop:safe.top+12,paddingHorizontal:20,paddingBottom:tab?115+safe.bottom:32+safe.bottom,gap:18,flexGrow:1},contentStyle]}>
       {(title||back||headerRight)&&<View style={[layout.row,{alignItems:'flex-start'}]}>{back&&<IconButton name="back" label="Volver" onPress={nav.back}/>}<View style={{flex:1,paddingTop:back?5:3}}>{title&&<Txt size={titleSize??(back?24:32)} weight="600">{title}</Txt>}{subtitle&&<Txt tone="secondary" size={14} style={{marginTop:5}}>{subtitle}</Txt>}</View>{headerRight}</View>}
       {children}

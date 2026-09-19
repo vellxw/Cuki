@@ -29,3 +29,19 @@ test('iOS numeric input can dismiss keyboard explicitly without saving, navigati
  act(()=>handlers.keyboardWillHide());expect(screen.queryByTestId('keyboard-dismiss')).toBeNull();
  view.unmount();expect(removed).toHaveBeenCalledTimes(2);
 });
+
+test('Android exposes an explicit finish action when its numeric keyboard covers a long form',()=>{
+ jest.replaceProperty(Platform,'OS','android');
+ jest.spyOn(Keyboard,'isVisible').mockReturnValue(false);
+ const handlers:Record<string,()=>void>={};const removed=jest.fn();const add=Keyboard.addListener.bind(Keyboard);
+ jest.spyOn(Keyboard,'addListener').mockImplementation((event,handler)=>{
+  handlers[event]=handler as ()=>void;const subscription=add(event,handler);const remove=subscription.remove.bind(subscription);subscription.remove=()=>{removed();remove()};return subscription;
+ });
+ const dismiss=jest.spyOn(Keyboard,'dismiss').mockImplementation(()=>{});
+ const view=render(<KeyboardDismissBar/>);
+ expect(Object.keys(handlers).sort()).toEqual(['keyboardDidHide','keyboardDidShow']);
+ act(()=>handlers.keyboardDidShow());
+ fireEvent.press(screen.getByRole('button',{name:'Ocultar teclado'}));expect(dismiss).toHaveBeenCalledTimes(1);
+ act(()=>handlers.keyboardDidHide());expect(screen.queryByTestId('keyboard-dismiss')).toBeNull();
+ view.unmount();expect(removed).toHaveBeenCalledTimes(2);
+});
