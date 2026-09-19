@@ -2,24 +2,13 @@ name: CUKI native binary checks
 on:
   push:
     branches: [implementation/cuki-verified]
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'tests/**'
-      - 'scripts/**'
-      - 'migrations/**'
-      - '*config*'
-      - 'package*.json'
-      - '.npmrc'
-      - '.github/workflows/native-build-check.yml'
-      - 'ci/native-request.json'
+    paths: ['apps/**', 'packages/**', 'tests/**', 'scripts/**', 'migrations/**', '*config*', 'package*.json', '.npmrc', '.github/workflows/native-build-check.yml', ci/native-request.json]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: cuki-native-binary-${{ github.ref }}
   cancel-in-progress: true
-# No API credentials or production data are embedded in this guest-test variant.
 env:
   CI: '1'
   EXPO_NO_TELEMETRY: '1'
@@ -84,25 +73,12 @@ jobs:
           set -o pipefail
           cd apps/mobile/android
           ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64,arm64-v8a --no-daemon --max-workers=2 --stacktrace 2>&1 | tee ../../../artifacts/native/android/build.log
-      - name: Enable KVM for ephemeral emulator
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Install pinned native accessibility driver, separate from app runtime
-        run: |
-          python3 -m venv /tmp/cuki-native-driver
-          /tmp/cuki-native-driver/bin/python -m pip install uiautomator2==3.7.0
-          echo /tmp/cuki-native-driver/bin >> "$GITHUB_PATH"
-          mkdir -p artifacts/native/driver
-          /tmp/cuki-native-driver/bin/python -m pip freeze > artifacts/native/driver/python-packages.txt
-      - uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 36
-          arch: x86_64
-          profile: pixel_6
-          disable-animations: false
-          script: python3 scripts/native/android-smoke.py
+      - name: Prepare identified working emulator configuration
+        run: bash scripts/native/prepare-ci-avd.sh
+      - name: Run full native suite while recording emulator lifetime and host memory
+        env:
+          CUKI_BINARY_SOURCE_SHA: ${{ github.sha }}
+        run: python3 scripts/native/owned-emulator.py --avd cuki-proof --gpu lavapipe --driver android-observed.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -111,8 +87,10 @@ jobs:
             apps/mobile/android/app/build/outputs/apk/release/*.apk
             artifacts/native/android
             artifacts/native/driver
+            artifacts/native/emulator-process
+            artifacts/native/android-observer
           retention-days: 30
-          if-no-files-found: warn
+          if-no-files-found: error
   ios:
     needs: preflight
     runs-on: macos-26
@@ -128,7 +106,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: cd apps/mobile && npx --no-install expo prebuild --platform ios --no-install
       - run: cd apps/mobile/ios && pod install
-      - name: Add an actual native XCTest target
+      - name: Add actual native XCTest target
         run: ruby scripts/native/ios/add-ui-tests.rb
       - name: Build simulator app and tests with ad-hoc entitlements
         run: |
@@ -136,10 +114,8 @@ jobs:
           set -o pipefail
           cd apps/mobile/ios
           test -d CUKITest.xcworkspace
-          # CODE_SIGNING_ALLOWED=NO strips the simulated keychain entitlement.
-          # '-' is local ad-hoc signing, not an Apple distribution identity.
           xcodebuild -workspace CUKITest.xcworkspace -scheme CUKISmoke -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build ARCHS=arm64 CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build-for-testing 2>&1 | tee ../../../artifacts/native/ios/build.log
-      - name: Run native guest navigation and durable food XCTest
+      - name: Run native guest, durable meals, supersets and selected-plan XCTest
         run: |
           set -o pipefail
           udid=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for xs in d["devices"].values() for x in xs if x.get("isAvailable") and "iPhone" in x["name"]))')
@@ -171,4 +147,4 @@ jobs:
           name: cuki-ios-simulator-${{ github.sha }}
           path: artifacts/native/ios
           retention-days: 30
-          if-no-files-found: warn
+          if-no-files-found: error
