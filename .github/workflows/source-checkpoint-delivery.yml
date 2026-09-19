@@ -1,0 +1,41 @@
+name: CUKI reproducible source checkpoint
+on:
+  push:
+    branches: [implementation/cuki-verified]
+    paths: [.github/workflows/source-checkpoint-delivery.yml, ci/source-checkpoint-request.json]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Archive the committed source and history, not environment data
+        run: |
+          mkdir -p delivery
+          git rev-parse HEAD > delivery/COMMIT.txt
+          git archive --format=zip --output=delivery/CUKI-source.zip HEAD
+          git bundle create delivery/CUKI-history.bundle HEAD refs/heads/implementation/cuki-verified
+          git bundle verify delivery/CUKI-history.bundle
+          python3 - <<'PY'
+          import hashlib,json,pathlib,zipfile,subprocess
+          root=pathlib.Path('delivery')
+          with zipfile.ZipFile(root/'CUKI-source.zip') as archive:
+              assert archive.testzip() is None
+              names=archive.namelist()
+              for path in ['package.json','package-lock.json','apps/mobile/app.config.ts','apps/mobile/src/data/AppProvider.tsx','packages/server/db.ts']:
+                  assert path in names,path
+          report={'commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'purpose':'Source checkpoint, not release approval','source_entries':len(names),'files':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in root.iterdir() if p.is_file()}}
+          (root/'manifest.json').write_text(json.dumps(report,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cuki-complete-source-${{ github.sha }}
+          path: delivery
+          retention-days: 30
+          if-no-files-found: error
