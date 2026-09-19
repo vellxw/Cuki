@@ -1,3 +1,4 @@
+import {RecipeVote} from '../ui/RecipeVote';
 import { editorDraftKey } from '../../../../packages/core/navigation';
 import { fetchRecipes, fetchComments } from '../data/community';
 import React, { useState } from 'react';
@@ -47,11 +48,12 @@ export function RecipeCard({recipe,onPress,compact=false}:{recipe:Recipe;onPress
       <View style={{borderRadius:18,overflow:'hidden'}}>
         <RecipeMedia recipe={recipe} height={compact?118:204}/>
         {!compact&&<><LinearGradient pointerEvents="none" colors={['rgba(3,8,5,.48)','rgba(3,8,5,0)','rgba(3,8,5,.92)']} locations={[0,.38,1]} style={StyleSheet.absoluteFill}/>
-          <View pointerEvents="none" style={{position:'absolute',top:12,left:12,right:12}}><Txt size={12} weight="600">{recipe.visibility==='editorial'?'CUKI Editorial':recipe.authorName}</Txt></View>
+          <View pointerEvents="none" style={{position:'absolute',top:12,left:12,right:122}}><Txt size={12} weight="600">{recipe.visibility==='editorial'?'CUKI Editorial':recipe.authorName}</Txt></View>
           <View pointerEvents="none" style={{position:'absolute',left:12,right:12,bottom:12,gap:4}}><Txt size={22} weight="600">{recipe.title}</Txt><Txt size={12} tone="secondary">{recipe.minutes>0?`${recipe.minutes} min`:'Tiempo no indicado'} · {recipe.visibility==='editorial'?'Receta original':'Receta de la comunidad'}</Txt></View></>}
       </View>
       {compact&&<View style={{gap:4,padding:7}}><Txt size={15} weight="600">{recipe.title}</Txt><Txt size={11} tone="secondary">{recipe.minutes} min · {fmt(recipeNutrition(recipe,state.foods).protein)} g de proteína</Txt></View>}
     </Pressable>
+    {!compact&&<View style={{position:'absolute',top:14,right:14}}><RecipeVote recipe={recipe}/></View>}
     {!compact&&<View style={{flexDirection:'row',alignItems:'center',gap:5,paddingLeft:8}}><View style={{flex:1}}><MacroRow nutrients={recipeNutrition(recipe,state.foods)}/></View><IconButton name="save" label={`Guardar receta ${recipe.title}`} selected={state.savedRecipeIds.includes(recipe.id)} onPress={()=>task.run(()=>repo.dispatch({type:'toggle',field:'savedRecipeIds',id:recipe.id}))}/></View>}
     <Message type="error">{task.error}</Message>
   </Glass>;
@@ -224,11 +226,7 @@ export function RecipeDetail({
         id: r.id
       })} /></> : <><Txt>{comments.length} comentarios disponibles</Txt>{comments.slice(0, 2).map(c => <Card key={c.id}><Txt weight="600">{c.authorName}</Txt><Txt>{c.text}</Txt><Txt size={12} tone="muted">{c.state === 'public' ? 'Publicado' : 'Pendiente de envío'}</Txt></Card>)}<Button title="Abrir comentarios" icon="comment" onPress={() => nav.go('SC-29', {
         id: r.id
-      })} /></>}<Button title={aboutOpen?"Ocultar descripción":"Acerca de esta receta"} variant="quiet" onPress={()=>setAboutOpen(!aboutOpen)}/>{aboutOpen&&<Txt tone="secondary">{r.description}</Txt>}<View style={layout.wrap}><Button title={state.votedRecipeIds.includes(r.id) ? 'Voto guardado' : 'Votar receta'} icon="up" variant="secondary" onPress={() => identity ? task.run(() => repo.dispatch({
-        type: 'toggle',
-        field: 'votedRecipeIds',
-        id: r.id
-      })) : nav.go('SC-03')} /><Button title="Planificar" icon="calendar" variant="quiet" onPress={() => nav.go('SC-41', {
+      })} /></>}<Button title={aboutOpen?"Ocultar descripción":"Acerca de esta receta"} variant="quiet" onPress={()=>setAboutOpen(!aboutOpen)}/>{aboutOpen&&<Txt tone="secondary">{r.description}</Txt>}<View style={layout.wrap}><RecipeVote recipe={r}/><Button title="Planificar" icon="calendar" variant="quiet" onPress={() => nav.go('SC-41', {
         recipeId: r.id
       })} /></View>{state.accountId !== 'guest' && state.outbox.some(o => o.entityId === r.id) && <Message>Tu interacción está pendiente de sincronización.</Message>}<Button title="Crear mi versión" variant="quiet" onPress={() => nav.go('SC-32', {
       id: r.id
