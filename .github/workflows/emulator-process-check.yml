@@ -21,6 +21,8 @@ jobs:
     env:
       CUKI_BINARY_SOURCE_SHA: 7b3f9972d578ce89cf729930858c20eba21cb2d4
       ANDROID_SERIAL: emulator-5554
+      ANDROID_USER_HOME: ${{ runner.temp }}/cuki-android-user
+      ANDROID_AVD_HOME: ${{ runner.temp }}/cuki-android-user/avd
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,12 +53,16 @@ jobs:
           python3 -m venv /tmp/cuki-native-driver
           /tmp/cuki-native-driver/bin/python -m pip install uiautomator2==3.7.0
           echo /tmp/cuki-native-driver/bin >> "$GITHUB_PATH"
+          mkdir -p "$ANDROID_AVD_HOME"
           set +o pipefail
           yes | sdkmanager --licenses > /dev/null
           set -o pipefail
           sdkmanager --install emulator platform-tools 'system-images;android-35;google_apis;x86_64' > artifacts/native/emulator-process/sdk-setup.log
-          echo no | avdmanager create avd --force -n cuki-proof --package 'system-images;android-35;google_apis;x86_64' --device pixel_6
-          printf 'hw.cpu.ncore=2\nhw.ramSize=3072\nhw.heapSize=512\n' >> "$HOME/.android/avd/cuki-proof.avd/config.ini"
+          echo no | avdmanager create avd --force -n cuki-proof --package 'system-images;android-35;google_apis;x86_64' --device pixel_6 -p "$ANDROID_AVD_HOME/cuki-proof.avd"
+          test -f "$ANDROID_AVD_HOME/cuki-proof.avd/config.ini"
+          printf 'hw.cpu.ncore=2\nhw.ramSize=3072\nhw.heapSize=512\n' >> "$ANDROID_AVD_HOME/cuki-proof.avd/config.ini"
+          emulator -list-avds | tee artifacts/native/emulator-process/available-avds.txt
+          grep -Fx cuki-proof artifacts/native/emulator-process/available-avds.txt
           adb start-server
       - name: Run the real two-screen diagnostic while recording emulator exit and memory
         run: python3 scripts/native/owned-emulator.py --avd cuki-proof --gpu '${{ matrix.gpu }}' --driver android-render-isolation.py
