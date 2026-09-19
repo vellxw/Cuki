@@ -43,16 +43,47 @@ final class CUKIVisualTests: XCTestCase {
             }
         }
         let prefix = String(format: "%02d-%@", index, scene)
-        for sample in 1...2 {
-            let frame = XCTAttachment(screenshot: app.screenshot())
-            frame.name = "\(prefix)-\(sample)"; frame.lifetime = .keepAlways; add(frame)
+        // Native GL can report a draw before iOS includes its layer in a screenshot.
+        // Keep every attempted framebuffer, and select ONLY a consecutive stable pair.
+        // This waits for presentation, never for resemblance to the design reference.
+        let hasPlant = scene == "home" || scene == "garden"
+        let plantState = app.descendants(matching: .any).matching(identifier: "plant-render-drawing").firstMatch
+        if hasPlant {
+            XCTAssertTrue(plantState.waitForExistence(timeout: 15),
+                          "Canonical 3D capture must actually draw; fallback requires separate QA", file: file, line: line)
+        }
+        var previous: XCUIScreenshot? = nil
+        var stablePair: (XCUIScreenshot, XCUIScreenshot)? = nil
+        var presentationAttempts = 0
+        for attempt in 1...8 {
+            let screenshot = app.screenshot()
+            let raw = XCTAttachment(screenshot: screenshot)
+            raw.name = "\(prefix)-presentation-attempt-\(attempt)"; raw.lifetime = .keepAlways; add(raw)
+            presentationAttempts = attempt
+            if let last = previous, last.pngRepresentation == screenshot.pngRepresentation {
+                stablePair = (last, screenshot)
+                break
+            }
+            previous = screenshot
             Thread.sleep(forTimeInterval: 1)
+        }
+        guard let pair = stablePair else {
+            XCTFail("Native screenshot did not settle; all attempted frames preserved", file: file, line: line)
+            throw NSError(domain: "CUKI.NativePresentation", code: 1)
+        }
+        XCTAssertTrue(marker.exists && content.exists, file: file, line: line)
+        XCTAssertEqual(springboard.alerts.count, 0, file: file, line: line)
+        for (sample, screenshot) in [pair.0, pair.1].enumerated() {
+            let frame = XCTAttachment(screenshot: screenshot)
+            frame.name = "\(prefix)-\(sample + 1)"; frame.lifetime = .keepAlways; add(frame)
         }
         let tree = XCTAttachment(string: app.debugDescription)
         tree.name = prefix + "-accessibility"; tree.lifetime = .keepAlways; add(tree)
         let observation: [String: Any] = ["scene": scene, "screen": screen,
             "identifiedNativeScreen": true, "noApplicationAlert": true, "noSystemAlert": true,
             "primaryAction": action ?? "not-applicable", "fixtureSeed": 1852006,
+            "stableConsecutivePair": true, "presentationAttempts": presentationAttempts,
+            "plant3DDrawAsserted": hasPlant,
             "frame": ["width": app.frame.width, "height": app.frame.height]]
         let json = try JSONSerialization.data(withJSONObject: observation, options: [.sortedKeys])
         let proof = XCTAttachment(data: json, uniformTypeIdentifier: "public.json")
