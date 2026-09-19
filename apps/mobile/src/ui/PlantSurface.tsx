@@ -1,36 +1,67 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-/** Fail-soft surface for a native renderer. A React exception is not the only way GL
- * can fail: native context creation can stall without throwing into an error boundary.
- * Keep the same procedural descriptor visible while starting, then abandon that GL
- * instance on a bounded foreground timeout. A draw callback is not pixel-fidelity proof.
+type Renderer = (onFirstDraw: () => void) => React.ReactNode;
+
+/** Native stacks keep inactive screens mounted. A stopped frame loop still owns a
+ * GL context, textures and render targets. Mount the renderer only while visible
+ * and foregrounded; the persistent seed and growth history remain outside it.
+ * Each activation owns its first-draw callback and watchdog, so a late callback
+ * from a disposed context cannot approve a different instance.
  */
 export function PlantSurface({ active, fallback, children }: {
   active: boolean;
   fallback: React.ReactNode;
-  children: (onFirstDraw: () => void) => React.ReactNode;
+  children: Renderer;
 }) {
-  const [phase, setPhase] = useState<'starting' | 'drawing' | 'simplified'>('starting');
-  const firstDraw = useCallback(() => setPhase(current => current === 'starting' ? 'drawing' : current), []);
-  const failed = useCallback(() => setPhase('simplified'), []);
-  useEffect(() => {
-    if (!active || phase !== 'starting') return;
-    const timer = setTimeout(failed, 7000);
-    return () => clearTimeout(timer);
-  }, [active, phase, failed]);
+  const [failed, setFailed] = useState(false);
+  const abandon = useCallback(() => setFailed(true), []);
   return <View style={{ flex: 1 }} testID="plant-render-surface" accessible={false}>
-    {phase !== 'simplified' && <View style={StyleSheet.absoluteFill} pointerEvents="none" accessible={false}>
-      <RendererBoundary onFailure={failed}>{children(firstDraw)}</RendererBoundary>
-    </View>}
-    {phase !== 'drawing' && <View style={StyleSheet.absoluteFill} pointerEvents="none" testID="plant-procedural-alternative">
-      {fallback}
-      <Text style={{ color: '#B8C2BE', fontSize: 10, textAlign: 'center' }}>
-        {phase === 'starting' ? 'Preparando vista 3D' : 'Vista procedural simplificada'}
-      </Text>
-    </View>}
-    <View testID={'plant-render-' + phase} style={{ width: 1, height: 1 }} accessible={false}/>
+    {failed ? <Alternative phase="simplified">{fallback}</Alternative>
+      : active ? <VisibleSurface fallback={fallback} renderer={children} onFailure={abandon}/>
+      : <Alternative phase="paused">{fallback}</Alternative>}
   </View>;
+}
+
+function Alternative({phase, children}: {
+  phase: 'starting' | 'simplified' | 'paused'; children: React.ReactNode;
+}) {
+  return <>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none" testID="plant-procedural-alternative">
+      {children}
+      <Text style={{ color: '#B8C2BE', fontSize: 10, textAlign: 'center' }}>
+        {phase === 'starting' ? 'Preparando vista 3D'
+          : phase === 'paused' ? 'Vista 3D en pausa' : 'Vista procedural simplificada'}
+      </Text>
+    </View>
+    <View testID={'plant-render-' + phase} style={{ width: 1, height: 1 }} accessible={false}/>
+  </>;
+}
+
+function VisibleSurface({ fallback, renderer, onFailure }: {
+  fallback: React.ReactNode; renderer: Renderer; onFailure: () => void;
+}) {
+  const [drawing, setDrawing] = useState(false);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => { alive.current = false; };
+  }, []);
+  const firstDraw = useCallback(() => {
+    if (alive.current) setDrawing(true);
+  }, []);
+  useEffect(() => {
+    if (drawing) return;
+    const timer = setTimeout(() => { if (alive.current) onFailure(); }, 7000);
+    return () => clearTimeout(timer);
+  }, [drawing, onFailure]);
+  return <>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none" accessible={false}>
+      <RendererBoundary onFailure={onFailure}>{renderer(firstDraw)}</RendererBoundary>
+    </View>
+    {drawing ? <View testID="plant-render-drawing" style={{width:1,height:1}} accessible={false}/>
+      : <Alternative phase="starting">{fallback}</Alternative>}
+  </>;
 }
 
 class RendererBoundary extends React.Component<{ children: React.ReactNode; onFailure: () => void }, { failed: boolean }> {

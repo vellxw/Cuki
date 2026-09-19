@@ -41,7 +41,8 @@ export function Plant({seed,weeks,height=300}:{seed:number;weeks:number;height?:
  const version=persisted?.rendererVersion??CURRENT_RENDERER;
  const rendererVersion:PlantRendererVersion=version==='1.0.0'||version==='1.1.0'?version:CURRENT_RENDERER;
  const supported=version==='1.0.0'||version==='1.1.0'||version===CURRENT_RENDERER;
- const [focused,setFocused]=useState(true);
+ // A preloaded route is not focused until the native navigator says so.
+ const [focused,setFocused]=useState(false);
  const [foreground,setForeground]=useState(AppState.currentState===null||AppState.currentState==='active');
  useFocusEffect(useCallback(()=>{setFocused(true);return()=>setFocused(false)},[]));
  useEffect(()=>{const sub=AppState.addEventListener('change',state=>setForeground(state==='active'));return()=>sub.remove()},[]);
