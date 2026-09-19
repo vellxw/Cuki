@@ -1,7 +1,7 @@
-import React,{useCallback,useEffect,useMemo,useRef} from 'react';
+import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {useFrame,useThree} from '@react-three/fiber/native';
 import * as THREE from 'three';
-import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {studioEnvironment} from './studioEnvironment';
 import {botanicalLeaf,botanicalPose} from '../../../../../packages/garden-engine/botanical-mesh';
 import {leafRaster} from '../../../../../packages/garden-engine/leaf-raster';
 import {xorshift32,type LeafDescriptor,type PlantDescriptor} from '../../../../../packages/garden-engine';
@@ -32,14 +32,19 @@ function mediumTexture(seed:number){
 /** The studio is lighting only; never replaces the native photographic backdrop.
  * Reflection approximation does not claim to refract the RN views behind the GL surface.
  */
-function BotanicalLighting(){
-  const {gl,scene,invalidate}=useThree();
+function BotanicalLighting({onReady}:{onReady:()=>void}){
+  const {scene,invalidate}=useThree();
+  const [error,setError]=useState<Error|null>(null);
   useEffect(()=>{
-    const previous=scene.environment,room=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(gl);
-    const target=pmrem.fromScene(room,.035,.1,30,{size:128});
-    scene.environment=target.texture;invalidate();room.dispose();pmrem.dispose();
-    return()=>{if(scene.environment===target.texture)scene.environment=previous;target.dispose()};
-  },[gl,scene,invalidate]);
+    let alive=true,owned:THREE.DataTexture|undefined;
+    const previous=scene.environment;
+    void studioEnvironment().then(texture=>{
+      if(!alive){texture.dispose();return;}
+      owned=texture;scene.environment=texture;onReady();invalidate();
+    }).catch(value=>{if(alive)setError(value instanceof Error?value:new Error(String(value)))});
+    return()=>{alive=false;if(owned){if(scene.environment===owned)scene.environment=previous;owned.dispose()}};
+  },[scene,invalidate,onReady]);
+  if(error)throw error;
   return <><hemisphereLight args={['#D3E4D7','#151B0E',.75]}/>
     <directionalLight color="#FFF1D4" intensity={2.1} position={[1.8,3.5,3]}/>
     <directionalLight color="#BFD8D2" intensity={.85} position={[-2.5,1.2,1.8]}/></>;
@@ -69,7 +74,9 @@ function Blade({leaf,week,texture}:{leaf:LeafDescriptor;week:number;texture:THRE
 }
 export function BotanicalObject({descriptor,week,animated,onFirstDraw}:{descriptor:PlantDescriptor;week:number;animated:boolean;onFirstDraw:()=>void}){
   const group=useRef<THREE.Group>(null),drew=useRef(false),{invalidate}=useThree();
-  const first=useCallback(()=>{if(!drew.current){drew.current=true;onFirstDraw()}},[onFirstDraw]);
+  const [lightingReady,setLightingReady]=useState(false);
+  const ready=useCallback(()=>setLightingReady(true),[]);
+  const first=useCallback(()=>{if(lightingReady&&!drew.current){drew.current=true;onFirstDraw()}},[lightingReady,onFirstDraw]);
   const textures=useMemo(()=>Array.from({length:4},(_,i)=>makeTexture((descriptor.seed+i*83171)>>>0)),[descriptor.seed]);
   const soilTexture=useMemo(()=>mediumTexture(descriptor.seed),[descriptor.seed]);
   const pot=useMemo(potGeometry,[]);
@@ -88,7 +95,7 @@ export function BotanicalObject({descriptor,week,animated,onFirstDraw}:{descript
   // UI animations and timers remain independent and native.
   useEffect(()=>{invalidate();if(!animated)return;const timer=setInterval(invalidate,1000/18);return()=>clearInterval(timer)},[animated,week,invalidate]);
   useFrame(({clock})=>{if(group.current)group.current.rotation.y=animated?-.28+Math.sin(clock.elapsedTime*.32)*.010:-.28});
-  return <><BotanicalLighting/><group ref={group} rotation={[0,-.28,0]}>
+  return <><BotanicalLighting onReady={ready}/><group ref={group} rotation={[0,-.28,0]}>
     <mesh geometry={soil} onAfterRender={first}><meshStandardMaterial map={soilTexture} roughness={.95} envMapIntensity={.45}/></mesh>
     {week>0&&roots.slice(0,Math.min(36,4+Math.floor(week*.62))).map((points,i)=><Branch key={i} points={points} radius={descriptor.roots[i].width*.8} color={i%4?'#846A42':'#B69A70'}/>)}
     {pebbles.map((item,i)=><mesh key={'soil-'+i} position={item.position} scale={[item.scale,item.scale*.48,item.scale*.72]}>

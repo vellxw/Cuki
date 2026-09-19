@@ -24,6 +24,10 @@ try{
   check('Asset importado '+relative(root,path),existsSync(path));const raw=readFileSync(path);const {width,height}=await sharp(raw).metadata();await sharp(raw).raw().toBuffer();
   check('Imagen decodificable '+relative(root,path),width>0&&height>0);report.assets.push({path:relative(root,path),width,height,sha256:createHash('sha256').update(raw).digest('hex')});
  }
+ const studioMetadata=JSON.parse(readFileSync(resolve(root,'apps/mobile/assets/studio-room-1.2.json'),'utf8'));
+ const studioBytes=readFileSync(resolve(root,'apps/mobile/assets/studio-room-1.2.bin'));
+ check('Prefiltered studio lighting bytes match the versioned asset',studioBytes.length===studioMetadata.byteLength&&createHash('sha256').update(studioBytes).digest('hex')===studioMetadata.sha256);
+ report.assets.push({path:'apps/mobile/assets/studio-room-1.2.bin',width:studioMetadata.width,height:studioMetadata.height,sha256:studioMetadata.sha256});
  if(!process.argv.includes('--static')){
   const commands=[['npm',['run','typecheck']],['npm',['test']]];
   if(process.argv.includes('--bundles'))commands.push(['npm',['run','export:android']],['npm',['run','export:ios']]);
