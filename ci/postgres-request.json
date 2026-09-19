@@ -1,0 +1,1 @@
+{"purpose":"Run the current integration suite against a real isolated PostgreSQL service, including optional schedules, stable plan-day identity, account isolation and guarded rewards. Provider behavior in the tests remains an explicit fixture, not live billing or AI validation. No production services or user data are involved."}
