@@ -1,0 +1,1 @@
+{"sourceBase":"9926b2fc2638648bdee450be925ccb33565eac3d","purpose":"Verify the currently committed 1.2.0 botanical mesh and material changes against actual native captures; no visual approval assumed. Six XCTest screen assertions, fixed iPhone 13 viewport, fixture-isolated bundle. Preserve original framebuffers and repeat-frame noise."}
