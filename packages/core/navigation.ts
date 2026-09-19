@@ -56,3 +56,8 @@ export function dockSectionForScreen(screen:string):'home'|'recipes'|'register'|
   'SC-79':'progress','SC-81':'progress','SC-83':'progress','SC-86':'progress',
  };return sections[screen]??null;
 }
+
+/** Ignore repeated/non-scalar query values instead of guessing which plan was meant. */
+export function routeParameters(values:Record<string,unknown>):Record<string,string> {
+ return Object.fromEntries(Object.entries(values).filter((entry):entry is [string,string]=>typeof entry[1]==='string'));
+}

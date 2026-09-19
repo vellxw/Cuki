@@ -1,9 +1,10 @@
+import {nextWorkout} from '../../../../packages/core/workout-calendar';
 import React, { useState } from 'react';
 import { View, Pressable, useWindowDimensions, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp, useTask } from '../data/AppProvider';
-import { Screen, Txt, Title, Button, IconButton, Message, Row, Ring, MacroRow, Section, Empty, useNav, DateControl, confirm, type ScreenProps, art } from '../ui/components';
+import { Screen, Txt, Title, Button, IconButton, Message, Row, Ring, MacroRow, Section, Empty, useNav, DateControl, confirm, type ScreenProps, art, useClock } from '../ui/components';
 import { Plant } from '../ui/Plant';
 import { Icon } from '../ui/Icon';
 import { layout, useTheme } from '../ui/theme';
@@ -21,7 +22,10 @@ export function Home({params = {}}: Partial<ScreenProps>) {
   const garden = state.garden;
   const week = garden?.creditedWeeks ?? 0;
   const active = state.sessions.find(s => s.status === 'active' || s.status === 'paused');
-  const plan = state.plans[0];
+  const now=useClock(60000);
+  const today=localDate(new Date(now),state.profile.timezone);
+  const upcoming=nextWorkout(state.plans,state.sessions,state.selectedDate);
+  const plannedLabel=upcoming?.date?(upcoming.date===today?'Hoy':prettyDate(upcoming.date))+' · ':'';
   const collapsed = width < 370 || fontScale > 1.3;
   const macros = [
     {label: 'P', key: 'protein' as const, color: c.protein},
@@ -47,7 +51,7 @@ export function Home({params = {}}: Partial<ScreenProps>) {
       <View style={{flex: collapsed ? undefined : 1, gap: 8, alignItems: collapsed ? 'center' : 'flex-start'}}>
         <Pressable accessibilityRole="button" accessibilityLabel="Abrir diario de nutrición" onPress={() => nav.go('SC-08')}
           style={{flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44}}>
-          <Icon name="nutrition" color={c.text} size={17}/><Txt size={12}>Nutrición de hoy</Txt><Icon name="chevron" size={13}/>
+          <Icon name="nutrition" color={c.text} size={17}/><Txt size={12}>{state.selectedDate===today?'Nutrición de hoy':'Nutrición · '+prettyDate(state.selectedDate)}</Txt><Icon name="chevron" size={13}/>
         </Pressable>
         {state.profile.showCalories ? <Ring value={calories.energy} goal={goal?.energy} size={Math.min(148,(width-40)*.415)}/>
           : <Txt size={20} weight="600">Tu diario, sin calorías</Txt>}
@@ -88,11 +92,14 @@ export function Home({params = {}}: Partial<ScreenProps>) {
       style={{alignSelf:'center',width:collapsed?'100%':'70%',minWidth:220,marginTop:0,marginBottom:4}}/>
     <View style={{borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:c.line,paddingTop:16,gap:7}}>
       <View style={layout.row}><Icon name="train" size={18}/><Txt size={13} tone="secondary">{active?'Sesión en curso':'Siguiente entrenamiento'}</Txt></View>
-      <Txt size={23} weight="600">{active?active.name:plan?plan.days[0]?.name??plan.name:'Construí tu rutina'}</Txt>
-      <Txt size={13} tone="secondary">{active?`${active.exercises.length} ejercicios · tus series están guardadas`:plan?
-        `${plan.days[0]?.exercises.length??0} ejercicios · plan manual`:'Elegí ejercicios, series y días a tu medida.'}</Txt>
-      <Button title={active?'Reanudar sesión':plan?'Ver rutina':'Crear rutina'} icon="arrow" variant="secondary" testID="home-next-workout"
-        onPress={() => active?nav.go(active.restDeadline?'SC-48':'SC-47',{id:active.id}):plan?nav.go('SC-42',{planId:plan.id}):nav.go('SC-44')}
+      <Txt size={23} weight="600">{active?active.name:upcoming?plannedLabel+upcoming.day.name:'Construí tu rutina'}</Txt>
+      {active?<Txt size={13} tone="secondary">{active.exercises.length} ejercicios · tus series están guardadas</Txt>
+        :upcoming?<View style={[layout.wrap,{gap:14}]}>
+          {upcoming.time&&<View style={[layout.row,{gap:7}]}><Icon name="clock" size={19}/><Txt size={13} tone="secondary">{upcoming.time}</Txt></View>}
+          <View style={[layout.row,{gap:7}]}><Icon name="list" size={19}/><Txt size={13} tone="secondary">{upcoming.day.exercises.length} ejercicios</Txt></View>
+        </View>:<Txt size={13} tone="secondary">Elegí ejercicios, series y días a tu medida.</Txt>}
+      <Button title={active?'Reanudar sesión':upcoming?'Ver rutina':'Crear rutina'} icon="arrow" variant="secondary" testID="home-next-workout"
+        onPress={() => active?nav.go(active.restDeadline?'SC-48':'SC-47',{id:active.id}):upcoming?nav.go('SC-42',{planId:upcoming.plan.id,dayId:upcoming.day.id,date:upcoming.date??undefined}):nav.go('SC-44')}
         style={{alignSelf:'flex-start'}}/>
     </View>
     <View style={layout.wrap}><Button title="Diario" variant="quiet" onPress={() => nav.go('SC-08')}/>

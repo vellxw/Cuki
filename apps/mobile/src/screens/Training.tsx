@@ -1,3 +1,4 @@
+import {WEEKDAYS,scheduleLabel} from '../../../../packages/core/workout-calendar';
 import {ActiveWorkout} from './ActiveWorkout';
 export {ActiveWorkout} from './ActiveWorkout';
 import { editorDraftKey } from '../../../../packages/core/navigation';
@@ -75,7 +76,7 @@ export function TrainingHome({
         id: active.id
       })} /></Card>}{chosen ? <Section title={chosen.name} action="Editar" onAction={() => nav.go('SC-44', {
       id: chosen.id
-    })}>{chosen.days.map((day, i) => <Card key={day.id}><Txt size={22} weight="600">{day.name}</Txt><Txt tone="secondary">{day.exercises.length} ejercicios · {day.exercises.reduce((s, e) => s + e.sets, 0)} series planificadas</Txt><Button title={`Iniciar ${day.name}`} busy={task.busy} disabled={!!active} onPress={() => start(chosen, i)} /></Card>)}</Section> : <Empty title="Tu primera rutina" detail="Creá un plan manual con los ejercicios, tiempos y equipamiento que usás." action="Crear rutina" onPress={() => nav.go('SC-44')} />}<Button title="Mis planes" variant="secondary" onPress={() => nav.go('SC-43')} /><Button title="Sesión libre" icon="plus" variant="secondary" disabled={!!active} onPress={() => nav.go('SC-45', {
+    })}>{chosen.days.map((day,i)=>({day,i})).sort((a,b)=>Number(b.day.id===params.dayId)-Number(a.day.id===params.dayId)).map(({day,i}) => <Card key={day.id}><Txt size={22} weight="600">{day.name}</Txt>{params.dayId===day.id&&<Txt size={12} tone="protein">{params.date?'Planificado para '+prettyDate(params.date):'Siguiente día del plan'}</Txt>}<Txt size={12} tone="secondary">{scheduleLabel(day.schedule)}</Txt><Txt tone="secondary">{day.exercises.length} ejercicios · {day.exercises.reduce((s, e) => s + e.sets, 0)} series planificadas</Txt><Button title={`Iniciar ${day.name}`} busy={task.busy} disabled={!!active} onPress={() => start(chosen, i)} /></Card>)}</Section> : <Empty title="Tu primera rutina" detail="Creá un plan manual con los ejercicios, tiempos y equipamiento que usás." action="Crear rutina" onPress={() => nav.go('SC-44')} />}<Button title="Mis planes" variant="secondary" onPress={() => nav.go('SC-43')} /><Button title="Sesión libre" icon="plus" variant="secondary" disabled={!!active} onPress={() => nav.go('SC-45', {
       mode: 'start'
     })} /><View style={layout.wrap}><Button title="Ejercicios" variant="quiet" onPress={() => nav.go('SC-45')} /><Button title="Actividad y cardio" variant="quiet" onPress={() => nav.go('SC-56')} /><Button title="Historial" variant="quiet" onPress={() => nav.go('SC-55')} /></View><Button title="Bloque y descarga" variant="quiet" onPress={() => nav.go('SC-54', {
       planId: chosen?.id
@@ -172,7 +173,20 @@ export function PlanEditor({
       label: day.name
     }))} value={String(index)} onChange={i => setIndex(Number(i))} /><Field label="Nombre del día" value={day?.name ?? ''} onChangeText={name => updateDay({
       name
-    })} />{day?.exercises.map((e, i) => {
+    })} /><Section title="Horario semanal opcional">
+      <Txt size={13} tone="secondary">Sin días seleccionados, seguís tu plan a tu ritmo. No se crean sesiones ni alarmas automáticamente.</Txt>
+      <View style={layout.wrap}>{WEEKDAYS.map(w=><Button key={w.value} title={w.label} compact
+        accessibilityLabel={`${day.schedule?.weekdays.includes(w.value)?'Quitar':'Elegir'} ${w.name}`}
+        variant={day.schedule?.weekdays.includes(w.value)?'primary':'secondary'} onPress={()=>{
+          const selected=day.schedule?.weekdays??[];
+          const next=selected.includes(w.value)?selected.filter(v=>v!==w.value):[...selected,w.value].sort((a,b)=>a-b);
+          updateDay({schedule:next.length?{weekdays:next,time:day.schedule?.time??null}:undefined});
+        }}/>)}</View>
+      {day.schedule&&<Field label="Hora de entrenamiento (HH:MM, opcional)" placeholder="19:30"
+        hint={`Horario local de tu perfil: ${state.profile.timezone}. Vacío: sin hora fija.`}
+        value={day.schedule.time??''} onChangeText={time=>updateDay({schedule:{...day.schedule!,time:time||null}})}
+        keyboardType="numbers-and-punctuation" maxLength={5}/>}
+    </Section>{day?.exercises.map((e, i) => {
       const exercise = state.exercises.find(x => x.id === e.exerciseId);
       return <Card key={e.id}><Txt size={21} weight="600">{exercise?.name ?? 'Ejercicio no encontrado'}</Txt><Txt size={12} tone="secondary">{exercise ? modeLabel[exercise.loadMode] : ''}. Cargas guardadas en kg.</Txt><View style={layout.wrap}>{([['sets', 'Series'], ['repsMin', 'Reps mínimas'], ['repsMax', 'Reps máximas'], ['restSeconds', 'Descanso (s)']] as const).map(([key, label]) => <View key={key} style={{
             width: '46%',

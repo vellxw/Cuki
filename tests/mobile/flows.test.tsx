@@ -316,3 +316,62 @@ test('compact workout disclosure never drops the hidden sets from the session',a
  expect(screen.getAllByRole('button',{name:/^Editar serie /})).toHaveLength(3);
  expect(repo.getSnapshot().sessions[0].exercises[0].sets).toHaveLength(7);
 });
+
+test('weekly workout time persists as a draft, refuses an incomplete hour, and survives reopening after save',async()=>{
+ const {newPlanDraft}=require('../../apps/mobile/src/screens/drafts');
+ const draft=newPlanDraft();draft.name='Plan con horario';draft.days[0].exercises=[{id:'ex-schedule',exerciseId:repo.getSnapshot().exercises[0].id,sets:3,repsMin:8,repsMax:12,load:20,restSeconds:90,superset:null}];
+ await repo.dispatch({type:'draft',key:'plan-editor:new',value:draft});
+ const first=show(<PlanEditor params={{}}/>);
+ fireEvent.press(screen.getByRole('button',{name:'Elegir lunes'}));
+ fireEvent.changeText(screen.getByLabelText('Hora de entrenamiento (HH:MM, opcional)'),'19:');
+ fireEvent.press(screen.getByRole('button',{name:'Guardar plan'}));
+ await waitFor(()=>expect(screen.getByText(/Usá una hora de 00:00/)).toBeTruthy());
+ expect(repo.getSnapshot().plans).toHaveLength(0);
+ first.unmount();
+ show(<PlanEditor params={{}}/>);
+ expect(screen.getByLabelText('Hora de entrenamiento (HH:MM, opcional)').props.value).toBe('19:');
+ fireEvent.changeText(screen.getByLabelText('Hora de entrenamiento (HH:MM, opcional)'),'19:30');
+ fireEvent.press(screen.getByRole('button',{name:'Guardar plan'}));
+ await waitFor(()=>expect(repo.getSnapshot().plans).toHaveLength(1));
+ const reopened=await new ClientRepo(disk.driver,'guest','UTC').init();
+ expect(reopened.getSnapshot().plans[0].days[0].schedule).toEqual({weekdays:[1],time:'19:30'});
+ expect(reopened.getSnapshot().sessions).toHaveLength(0);expect(reopened.getSnapshot().garden).toBeNull();
+});
+test('Home routes to the actual scheduled day and does not label a historical nutrition date as today',async()=>{
+ const {newPlanDraft,planFromDraft}=require('../../apps/mobile/src/screens/drafts');
+ const draft=newPlanDraft();draft.name='Mi plan';draft.days[0].name='Piernas';draft.days[0].schedule={weekdays:[1],time:'19:30'};
+ draft.days[0].exercises=[{id:'scheduled-ex',exerciseId:repo.getSnapshot().exercises[0].id,sets:3,repsMin:8,repsMax:12,load:20,restSeconds:90,superset:null}];
+ await repo.dispatch({type:'plan',plan:planFromDraft(draft)});await repo.dispatch({type:'date',date:'2026-09-14'});
+ show(<Home/>);
+ expect(screen.getByText('19:30')).toBeTruthy();
+ expect(screen.queryByText('Nutrición de hoy')).toBeNull();
+ fireEvent.press(screen.getByTestId('home-next-workout'));
+ expect(navigation.router.dismissTo).toHaveBeenLastCalledWith(expect.objectContaining({pathname:'/(tabs)/train',params:expect.objectContaining({planId:draft.id,dayId:draft.days[0].id,date:'2026-09-14'})}));
+ expect(repo.getSnapshot().sessions).toHaveLength(0);
+});
+test('the weekly planner distinguishes scheduled training from actual logged training',async()=>{
+ const {Week}=require('../../apps/mobile/src/screens/Planning');const {newPlanDraft,planFromDraft}=require('../../apps/mobile/src/screens/drafts');
+ const draft=newPlanDraft();draft.name='Semana';draft.days[0].schedule={weekdays:[1],time:'19:30'};
+ draft.days[0].exercises=[{id:'week-ex',exerciseId:repo.getSnapshot().exercises[0].id,sets:3,repsMin:8,repsMax:12,load:20,restSeconds:90,superset:null}];
+ await repo.dispatch({type:'plan',plan:planFromDraft(draft)});await repo.dispatch({type:'date',date:'2026-09-14'});
+ show(<Week/>);
+ expect(screen.getByText('Entrenamiento planificado · 19:30 · aún sin registrar')).toBeTruthy();
+ expect(repo.getSnapshot().sessions).toHaveLength(0);expect(repo.getSnapshot().diary).toHaveLength(0);
+});
+
+test('the native Training tab reads the selected plan from real route parameters rather than defaulting to plans[0]',async()=>{
+ const TrainTab=require('../../apps/mobile/app/(tabs)/train').default;
+ const {newPlanDraft,planFromDraft}=require('../../apps/mobile/src/screens/drafts');
+ const first=newPlanDraft();first.name='Plan anterior';
+ first.days[0].exercises=[{id:'native-first-ex',exerciseId:repo.getSnapshot().exercises[0].id,sets:3,repsMin:8,repsMax:12,load:20,restSeconds:90,superset:null}];
+ const second=newPlanDraft();second.name='Plan elegido';second.days[0].name='Rutina elegida';
+ second.days[0].exercises=[{id:'native-second-ex',exerciseId:repo.getSnapshot().exercises[1].id,sets:4,repsMin:6,repsMax:10,load:15,restSeconds:90,superset:null}];
+ await repo.dispatch({type:'plan',plan:planFromDraft(first)});await repo.dispatch({type:'plan',plan:planFromDraft(second)});
+ show(<TrainTab/>,{planId:second.id,dayId:second.days[0].id});
+ expect(screen.getByText('Plan elegido')).toBeTruthy();
+ expect(screen.queryByText('Plan anterior')).toBeNull();
+ fireEvent.press(screen.getByRole('button',{name:'Iniciar Rutina elegida'}));
+ await waitFor(()=>expect(repo.getSnapshot().sessions).toHaveLength(1));
+ expect(repo.getSnapshot().sessions[0].planId).toBe(second.id);
+ expect(repo.getSnapshot().sessions[0].planDayId).toBe(second.days[0].id);
+});

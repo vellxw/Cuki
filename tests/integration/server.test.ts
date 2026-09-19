@@ -107,3 +107,22 @@ test('a store response that silently reactivates renewal is not accepted as the 
  await processRedemption(db,actor,r.id,provider,clock);assert.equal((await getRedemption(db,actor,r.id)).state,'unknown_reconciling');
  assert.equal((await garden.wallet(db,actor))[0].state,'reserved');
 });
+
+test('SQL synchronization preserves an optional workout schedule and stable day identity without awarding exercise credits',async()=>{
+ const a=await user(),b=await user();let s=initialState(a.id,'UTC',clock.toISOString());
+ const plan:WorkoutPlan={id:uid(),version:1,name:'Horario de prueba',weeks:8,deload:false,createdAt:clock.toISOString(),days:[{id:uid(),name:'Upper A',schedule:{weekdays:[1,3],time:'19:30'},exercises:[{id:uid(),exerciseId:s.exercises[0].id,sets:3,repsMin:8,repsMax:12,load:20,restSeconds:90,superset:null}]}]};
+ s=await commands(a,s,[{type:'plan',plan}]);
+ const remote=await http(a,'/v1/sync/pull?cursor=0');
+ const copy=remote.body.changes.find((e:any)=>e.entityType==='plan');
+ assert.deepEqual(copy.payload.days[0].schedule,{weekdays:[1,3],time:'19:30'});
+ assert.equal((await http(b,'/v1/sync/pull?cursor=0')).body.changes.length,0);
+ const session=createSession(s,plan,0,undefined,clock.toISOString());s=await commands(a,s,[{type:'startSession',session}]);
+ const started=await http(a,'/v1/sync/pull?cursor=0');
+ assert.equal(started.body.changes.find((e:any)=>e.entityType==='session').payload.planDayId,plan.days[0].id);
+ assert.equal((await garden.getGarden(db,a,clock)),null);
+ const invalid={...plan,version:2,days:[{...plan.days[0],schedule:{weekdays:[1,1],time:'25:00'}}]};
+ const rejected=await push(db,a,{operations:[op('plan',plan.id,invalid,1)]},clock);
+ assert.equal((rejected.results[0] as any).state,'failed');
+ const unchanged=await http(a,'/v1/sync/pull?cursor=0');
+ assert.deepEqual(unchanged.body.changes.find((e:any)=>e.entityType==='plan').payload.days[0].schedule,{weekdays:[1,3],time:'19:30'});
+});

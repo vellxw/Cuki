@@ -14,10 +14,11 @@ export type SetKind='working'|'warmup'|'drop'|'timed'|'distance';
 export interface Exercise {id:string;name:string;muscle:string;pattern:string;equipment:string;instructions:string[];modality:'strength'|'timed'|'distance';loadMode:LoadMode;custom:boolean;mediaUri:string|null}
 export interface SetEntry {id:string;version:number;kind:SetKind;loadMode:LoadMode;load:number|null;reps:number|null;seconds:number|null;meters:number|null;rir:number|null;note:string;completedAt:string|null}
 export interface PlanExercise {id:string;exerciseId:string;sets:number;repsMin:number;repsMax:number;load:number|null;restSeconds:number;superset:string|null}
-export interface PlanDay {id:string;name:string;exercises:PlanExercise[]}
+export interface WeeklyWorkoutSchedule {weekdays:number[];time:string|null}
+export interface PlanDay {id:string;name:string;exercises:PlanExercise[];schedule?:WeeklyWorkoutSchedule}
 export interface WorkoutPlan {id:string;version:number;name:string;weeks:number;deload:boolean;days:PlanDay[];createdAt:string}
 export interface SessionExercise {id:string;exerciseId:string;sets:SetEntry[];restSeconds:number;superset:string|null}
-export interface WorkoutSession {id:string;version:number;name:string;planId:string|null;date:string;timezone:string;status:'active'|'paused'|'completed'|'discarded';startedAt:string;endedAt:string|null;pausedAt:string|null;pausedSeconds:number;exercises:SessionExercise[];currentExercise:number;note:string;restDeadline:number|null;restNotificationId:string|null}
+export interface WorkoutSession {id:string;version:number;name:string;planId:string|null;planDayId?:string|null;date:string;timezone:string;status:'active'|'paused'|'completed'|'discarded';startedAt:string;endedAt:string|null;pausedAt:string|null;pausedSeconds:number;exercises:SessionExercise[];currentExercise:number;note:string;restDeadline:number|null;restNotificationId:string|null}
 export interface Comment {id:string;recipeId:string;parentId:string|null;authorId:string;authorName:string;text:string;createdAt:string;state:'pending'|'public'|'deleted'}
 export interface Collection {id:string;name:string;recipeIds:string[]}
 export interface PlannedMeal {id:string;version:number;date:string;meal:Meal;recipeId:string;recipe:Recipe;servings:number}

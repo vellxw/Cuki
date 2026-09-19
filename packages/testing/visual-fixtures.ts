@@ -33,7 +33,7 @@ export function createVisualState(scene:VisualScene):{state:AppState;screen:stri
  const recipe:Recipe={id:'visual-teriyaki',version:1,title:'Bowl de pollo teriyaki',description:'Pollo, arroz y vegetales en un bowl. Cantidades sintéticas para comprobar la interfaz.',authorId:'visual-author',authorName:'@laura_cocina',visibility:'public',minutes:20,servings:1,cookedYield:375,photoUri:null,assetKey:'bowl',tags:['Fitness','Rápidas'],createdAt:FIXTURE_NOW,
  ingredients:foods.map((f,i)=>({id:'visual-ingredient-'+i,foodId:f.id,foodVersion:1,snapshot:f,grams:spec[i][2]})),steps:[{id:'visual-step1',text:'Prepará el arroz y los vegetales por separado.',seconds:600},{id:'visual-step2',text:'Cociná el pollo y armá el bowl con los ingredientes.',seconds:null}]};
  state.recipes=[recipe,...state.recipes];
- const plan:WorkoutPlan={id:'visual-plan',version:1,name:'Upper A',weeks:8,deload:false,createdAt:FIXTURE_NOW,days:[{id:'visual-day-a',name:'Upper A',exercises:['pulldown','lateral','incline-machine','row-machine','biceps','triceps'].map((id,i)=>({id:'visual-plan-ex-'+i,exerciseId:id,sets:4,repsMin:8,repsMax:12,load:70,restSeconds:120,superset:null}))}]};
+ const plan:WorkoutPlan={id:'visual-plan',version:1,name:'Upper A',weeks:8,deload:false,createdAt:FIXTURE_NOW,days:[{id:'visual-day-a',name:'Upper A',schedule:{weekdays:[1],time:'19:30'},exercises:['pulldown','lateral','incline-machine','row-machine','biceps','triceps'].map((id,i)=>({id:'visual-plan-ex-'+i,exerciseId:id,sets:4,repsMin:8,repsMax:12,load:70,restSeconds:120,superset:null}))}]};
  state.plans=[plan];
  const stage=scene==='garden'?38:18;
  const start=new Date(Date.parse(FIXTURE_NOW)-(stage-1)*7*86400000-3600000).toISOString();
