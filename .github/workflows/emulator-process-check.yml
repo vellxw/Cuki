@@ -21,8 +21,8 @@ jobs:
     env:
       CUKI_BINARY_SOURCE_SHA: 7b3f9972d578ce89cf729930858c20eba21cb2d4
       ANDROID_SERIAL: emulator-5554
-      ANDROID_USER_HOME: ${{ runner.temp }}/cuki-android-user
-      ANDROID_AVD_HOME: ${{ runner.temp }}/cuki-android-user/avd
+      ANDROID_USER_HOME: /tmp/cuki-owned-android-user
+      ANDROID_AVD_HOME: /tmp/cuki-owned-android-user/avd
     steps:
       - uses: actions/checkout@v4
         with:
