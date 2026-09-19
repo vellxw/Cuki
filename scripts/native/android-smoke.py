@@ -34,8 +34,8 @@ def recover_launcher_dialog(xml):
 
 
 
-def adb(*args, binary=False):
-    return subprocess.check_output(['adb', *args], timeout=45, text=not binary)
+def adb(*args, binary=False, timeout=45):
+    return subprocess.check_output(['adb', *args], timeout=timeout, text=not binary)
 
 
 def hierarchy():
@@ -163,7 +163,11 @@ def run_guest_suite():
         report['apkSha256'] = hashlib.sha256(apk.read_bytes()).hexdigest()
         report['device'] = adb('shell', 'getprop', 'ro.product.model').strip()
         report['androidVersion'] = adb('shell', 'getprop', 'ro.build.version.release').strip()
-        adb('install', '-r', str(apk))
+        # The 123 MB multi-ABI package took over 45 seconds to install on a fresh
+        # Google API image. This is provisioning, not an app-action timeout.
+        installing=time.monotonic()
+        adb('install', '-r', str(apk),timeout=180)
+        report['installationSeconds']=round(time.monotonic()-installing,3)
         assert PACKAGE in adb('shell', 'pm', 'list', 'packages', PACKAGE)
         adb('shell', 'pm', 'clear', PACKAGE)
         adb('logcat', '-c')

@@ -24,6 +24,16 @@ def capture(args, timeout=8):
         return {'error':str(e)}
 
 
+def observation_screenshot(path):
+    try:
+        with path.open('wb') as f:
+            result=subprocess.run(['adb','exec-out','screencap','-p'],stdout=f,stderr=subprocess.PIPE,timeout=15)
+        return {'file':path.name,'exitCode':result.returncode,'scope':'observation, not a passing scene assertion'}
+    except Exception as error:
+        # A failed observer operation must not terminate or restart the actual suite.
+        return {'file':path.name,'error':str(error),'scope':'failed observation'}
+
+
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
     records=[]
@@ -35,9 +45,7 @@ def main():
         try:
             log=subprocess.Popen(['adb','logcat','-v','threadtime'],stdout=stream,stderr=subprocess.STDOUT)
             # Screenshot before CUKI launches is explicitly preparation evidence.
-            with (OUT/'00-before-suite.png').open('wb') as f:
-                prep=subprocess.run(['adb','exec-out','screencap','-p'],stdout=f,stderr=subprocess.PIPE,timeout=15)
-            report['preparationScreenshotExitCode']=prep.returncode
+            report['preparationScreenshot']=observation_screenshot(OUT/'00-before-suite.png')
             suite=subprocess.Popen([sys.executable,str(ROOT/'scripts/native/android-smoke.py')],cwd=ROOT,stdout=output,stderr=subprocess.STDOUT)
             started=time.monotonic();sample=0
             while suite.poll() is None:
@@ -48,9 +56,7 @@ def main():
                 item['host']['out']='\n'.join(x for x in item['host'].get('out','').splitlines() if 'qemu-system' in x or '/emulator/emulator ' in x)
                 if item['device'].get('out','').strip()=='device' and sample in (0,1,2,4,8):
                     dest=OUT/f'observation-{sample:02d}.png'
-                    with dest.open('wb') as f:
-                        shot=subprocess.run(['adb','exec-out','screencap','-p'],stdout=f,stderr=subprocess.PIPE,timeout=15)
-                    item['screenshot']={'file':dest.name,'exitCode':shot.returncode,'scope':'not a passing scene assertion'}
+                    item['screenshot']=observation_screenshot(dest)
                 records.append(item);(OUT/'observation.json').write_text(json.dumps(records,indent=2)+'\n')
                 if time.monotonic()-started>600:
                     suite.terminate()
